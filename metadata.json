@@ -1,0 +1,6 @@
+{
+  "name": "Patan Academy Emergency & Critical Care HRMS",
+  "description": "Hospital Human Resource Management System for Emergency & Trauma departments featuring duty rosters, calendar scheduling, shift type management, fatigue guardrails, leave tracking, and clinical compliance analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
