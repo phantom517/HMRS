@@ -48,6 +48,18 @@ export function getSeedData(): SeedDataPayload {
       createdAt: new Date("2024-03-15T08:00:00Z"),
       updatedAt: new Date("2024-10-24T08:00:00Z"),
     },
+    {
+      id: "usr_viewer_003",
+      name: "Staff Member (View Only)",
+      email: "viewer@patanacademy.edu.np",
+      passwordHash: "$2a$10$wK1m3v/U7G3zC5cZ.gT5v.Z7hYwK8n6hP2o4iM1qY7aX0bC.dE6fG",
+      role: "viewer",
+      title: "Emergency Staff • Read-Only View",
+      active: true,
+      avatarUrl: null,
+      createdAt: new Date("2024-03-15T08:00:00Z"),
+      updatedAt: new Date("2024-10-24T08:00:00Z"),
+    },
   ];
 
   const permissions = [

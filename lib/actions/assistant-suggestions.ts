@@ -19,7 +19,14 @@ export interface AssistantSuggestion {
 
 export async function getAssistantSuggestionsAction(): Promise<AssistantSuggestion[]> {
   const user = await getCurrentUser();
-  if (user.role === "viewer") return [];
+  if (user.role === "viewer") {
+    return [
+      { label: "Today's shift roster", prompt: "Who is working the Day, Evening, and Night shifts today?" },
+      { label: "Night shift coverage tonight", prompt: "Who is assigned to the Night shift in Trauma and Critical Care tonight?" },
+      { label: "Department fatigue rules", prompt: "What are our rest intervals and maximum weekly hours limits?" },
+      { label: "Approved leaves this week", prompt: "Which doctors and nurses have approved leave scheduled this week?" },
+    ];
+  }
 
   const suggestions: AssistantSuggestion[] = [];
 

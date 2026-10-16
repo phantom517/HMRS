@@ -318,6 +318,40 @@ main {
   .reports-panels {
     grid-template-columns: 1fr !important;
   }
+  .roster-header-container {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+  .roster-header-container .zbtn-primary {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+  .roster-toolbar-container {
+    gap: 8px !important;
+  }
+  .roster-toolbar-item-full {
+    width: 100% !important;
+  }
+  .roster-toolbar-item-half {
+    width: calc(50% - 4px) !important;
+  }
+  .mobile-day-selector {
+    display: flex !important;
+    overflow-x: auto;
+    padding: 4px 0 8px;
+    gap: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ztable-roster-wrap {
+    max-height: calc(100vh - 240px) !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .roster-drawer-surface {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
 }
 
 /* ─── Roster grid helpers ─── */

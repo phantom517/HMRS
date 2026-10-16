@@ -11,6 +11,10 @@ import {
   FileText,
   Table,
   ShieldCheck,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  ShieldAlert,
 } from "lucide-react";
 import { AuthenticatedUser } from "@/lib/auth/session";
 import { ConflictCheckerModal } from "@/components/modals/ConflictCheckerModal";
@@ -23,6 +27,11 @@ import {
   deleteShiftAssignmentAction,
   smartFillRosterAction,
 } from "@/lib/actions/shifts";
+import {
+  RosterGuardrailBadge,
+  type FatigueAlert,
+  type UnfilledAlert,
+} from "@/components/roster/RosterGuardrailBadge";
 import {
   getRosterWeek,
   netHoursOf,
@@ -111,6 +120,8 @@ export function DutyRosterClient({
   const [selectedZone, setSelectedZone] = useState("ALL");
 
   const [assignments, setAssignments] = useState(initialAssignments);
+  const [selectedDayMobile, setSelectedDayMobile] = useState<string>("all");
+  const [liveAlertToast, setLiveAlertToast] = useState<{ message: string; type: "critical" | "success" | "warning" } | null>(null);
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
@@ -142,13 +153,22 @@ export function DutyRosterClient({
       const res = await smartFillRosterAction({ startDate: week.startDate, endDate: week.endDate });
       const existingIds = new Set(assignments.map((a) => a.id));
       const fresh = (res.assignments || []).filter((a: any) => !existingIds.has(a.id));
-      setAssignments((prev) => [...prev, ...fresh]);
-      setSmartFillNotice(
-        `Smart Fill scheduled ${res.count} shifts${res.skipped ? ` (${res.skipped} slots left open — no eligible staff)` : ""}.`
-      );
+      const nextAsgs = [...assignments, ...fresh];
+      setAssignments(nextAsgs);
+      const noticeMsg = `Smart Fill scheduled ${res.count} shifts${res.skipped ? ` (${res.skipped} slots left open — no eligible staff)` : ""}.`;
+      setSmartFillNotice(noticeMsg);
+      setLiveAlertToast({
+        message: `Roster auto-filled (${res.count} shifts). Automated guardrails audited across the department.`,
+        type: "success",
+      });
+      setTimeout(() => setLiveAlertToast(null), 6000);
       router.refresh();
     } catch (err: any) {
       setSmartFillNotice(err.message || "Smart Fill failed.");
+      setLiveAlertToast({
+        message: err.message || "Smart Fill failed.",
+        type: "critical",
+      });
     } finally {
       setIsSmartFilling(false);
     }
@@ -216,6 +236,198 @@ export function DutyRosterClient({
     return map;
   }, [activeShiftTypes, shiftRequirements]);
 
+  // ─── Automated Real-time Guardrail Audit (Fatigue + Unfilled Shifts) ───────────
+  const liveGuardrailAudit = useMemo(() => {
+    const fatigueAlerts: FatigueAlert[] = [];
+    const unfilledAlerts: UnfilledAlert[] = [];
+
+    // 1. Fatigue Violations Scan
+    for (const emp of employees) {
+      const empAsgs = assignments
+        .filter((a) => a.employeeId === emp.id && a.status !== "cancelled")
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      // A) Weekly hours cap
+      const totalWeeklyHours = empAsgs.reduce((sum, a) => {
+        const st = shiftTypes.find((s) => s.id === a.shiftTypeId);
+        return sum + netHoursOf(st);
+      }, 0);
+      const cap = emp.maxHoursPerWeek ?? weeklyHoursCap;
+      if (totalWeeklyHours > cap) {
+        fatigueAlerts.push({
+          id: `hours-${emp.id}`,
+          employeeId: emp.id,
+          employeeName: emp.fullName,
+          employeeRole: emp.designation,
+          date: week.startDate,
+          shiftTypeId: "",
+          shiftName: "Weekly Cap",
+          type: "weekly_hours",
+          severity: "critical",
+          title: "Weekly Hours Limit Exceeded",
+          description: `${emp.fullName} is scheduled for ${totalWeeklyHours.toFixed(1)}h this week (Guardrail limit: ${cap}h). Potential clinical burnout risk.`,
+        });
+      }
+
+      // B) Rest interval (<11h rest between consecutive shifts)
+      for (let i = 0; i < empAsgs.length - 1; i++) {
+        const curr = empAsgs[i];
+        const next = empAsgs[i + 1];
+        const stCurr = shiftTypes.find((s) => s.id === curr.shiftTypeId);
+        const stNext = shiftTypes.find((s) => s.id === next.shiftTypeId);
+        if (!stCurr || !stNext) continue;
+
+        const endCurr = new Date(`${curr.date}T${stCurr.endTime}:00`);
+        if (stCurr.crossesMidnight || isNightShiftType(stCurr)) {
+          endCurr.setDate(endCurr.getDate() + 1);
+        }
+        const startNext = new Date(`${next.date}T${stNext.startTime}:00`);
+        const restHours = (startNext.getTime() - endCurr.getTime()) / (1000 * 60 * 60);
+
+        const minRest = settings?.minRestHoursBetweenShifts ?? 11;
+        if (restHours >= 0 && restHours < minRest) {
+          fatigueAlerts.push({
+            id: `rest-${curr.id}-${next.id}`,
+            employeeId: emp.id,
+            employeeName: emp.fullName,
+            employeeRole: emp.designation,
+            date: next.date,
+            shiftTypeId: next.shiftTypeId,
+            shiftName: stNext.name,
+            type: "rest_interval",
+            severity: "critical",
+            title: "Insufficient Rest Interval (<11h)",
+            description: `Only ${restHours.toFixed(1)}h rest between ${stCurr.name} (${curr.date}) and ${stNext.name} (${next.date}). Mandated minimum is ${minRest}h.`,
+            assignmentId: next.id,
+          });
+        }
+      }
+
+      // C) Consecutive workdays cap (>5 consecutive workdays)
+      let consecutive = 1;
+      for (let i = 0; i < empAsgs.length - 1; i++) {
+        const d1 = new Date(empAsgs[i].date);
+        const d2 = new Date(empAsgs[i + 1].date);
+        const diffDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays === 1) {
+          consecutive++;
+          if (consecutive > (settings?.consecutiveShiftsCap ?? 5)) {
+            fatigueAlerts.push({
+              id: `consec-${emp.id}-${empAsgs[i + 1].date}`,
+              employeeId: emp.id,
+              employeeName: emp.fullName,
+              employeeRole: emp.designation,
+              date: empAsgs[i + 1].date,
+              shiftTypeId: empAsgs[i + 1].shiftTypeId,
+              shiftName: "Consecutive Shifts",
+              type: "consecutive_days",
+              severity: "warning",
+              title: "Consecutive Shifts Guardrail Breached",
+              description: `${emp.fullName} has ${consecutive} consecutive shifts without a mandatory off-duty rest day.`,
+              assignmentId: empAsgs[i + 1].id,
+            });
+          }
+        } else {
+          consecutive = 1;
+        }
+      }
+
+      // D) Conflict flags from database/scheduling
+      for (const a of empAsgs) {
+        if (a.conflictFlag && !fatigueAlerts.some((al) => al.assignmentId === a.id)) {
+          fatigueAlerts.push({
+            id: `flag-${a.id}`,
+            employeeId: emp.id,
+            employeeName: emp.fullName,
+            employeeRole: emp.designation,
+            date: a.date,
+            shiftTypeId: a.shiftTypeId,
+            shiftName: shiftTypes.find((s) => s.id === a.shiftTypeId)?.name || "Shift",
+            type: "overlap",
+            severity: "critical",
+            title: "Schedule Conflict Detected",
+            description: a.conflictReason || "Overlapping shift, leave collision, or rest violation.",
+            assignmentId: a.id,
+          });
+        }
+      }
+    }
+
+    // 2. Unfilled Shift Requirements Scan
+    for (const d of week.dates) {
+      for (const st of activeShiftTypes) {
+        const assignedInShift = assignments.filter(
+          (a) => a.date === d.date && a.shiftTypeId === st.id && a.status !== "cancelled"
+        );
+
+        // Check MD requirements
+        const requiredMd = st.minimumStaffMd || 0;
+        if (requiredMd > 0) {
+          const assignedMd = assignedInShift.filter((a) => {
+            const emp = employees.find((e) => e.id === a.employeeId);
+            return emp && /md|physician|surgeon|doctor/i.test(emp.designation);
+          }).length;
+          if (assignedMd < requiredMd) {
+            unfilledAlerts.push({
+              id: `unfilled-md-${d.date}-${st.id}`,
+              date: d.date,
+              weekday: d.weekday,
+              shiftTypeId: st.id,
+              shiftName: st.name,
+              shiftColor: st.color,
+              shortageCount: requiredMd - assignedMd,
+              requiredCount: requiredMd,
+              assignedCount: assignedMd,
+              designation: "MD / Physician",
+              severity: "critical",
+              title: `Unfilled MD Requirement: ${st.name}`,
+              description: `${d.weekday} (${d.date}): ${assignedMd}/${requiredMd} MDs assigned. Needs ${requiredMd - assignedMd} more physician(s) to meet safe coverage.`,
+            });
+          }
+        }
+
+        // Check RN requirements
+        const requiredRn = st.minimumStaffRn || 0;
+        if (requiredRn > 0) {
+          const assignedRn = assignedInShift.filter((a) => {
+            const emp = employees.find((e) => e.id === a.employeeId);
+            return emp && /rn|nurse/i.test(emp.designation);
+          }).length;
+          if (assignedRn < requiredRn) {
+            unfilledAlerts.push({
+              id: `unfilled-rn-${d.date}-${st.id}`,
+              date: d.date,
+              weekday: d.weekday,
+              shiftTypeId: st.id,
+              shiftName: st.name,
+              shiftColor: st.color,
+              shortageCount: requiredRn - assignedRn,
+              requiredCount: requiredRn,
+              assignedCount: assignedRn,
+              designation: "RN / Staff Nurse",
+              severity: isNightShiftType(st) ? "critical" : "warning",
+              title: `Unfilled Nurse Requirement: ${st.name}`,
+              description: `${d.weekday} (${d.date}): ${assignedRn}/${requiredRn} RNs assigned. Needs ${requiredRn - assignedRn} more nurse(s) for clinical minimum.`,
+            });
+          }
+        }
+      }
+    }
+
+    return {
+      fatigueAlerts,
+      unfilledAlerts,
+      totalAlerts: fatigueAlerts.length + unfilledAlerts.length,
+    };
+  }, [employees, assignments, shiftTypes, activeShiftTypes, week, settings, weeklyHoursCap]);
+
+  // Mobile-responsive visible dates (either all 7 days or single day on small screens)
+  const visibleDates = useMemo(() => {
+    if (selectedDayMobile === "all") return week.dates;
+    const match = week.dates.filter((d) => d.date === selectedDayMobile);
+    return match.length > 0 ? match : week.dates;
+  }, [selectedDayMobile, week.dates]);
+
   /* ─── Filtering + grouping ───────────────────────────────────────────────── */
 
   const filteredEmployees = useMemo(
@@ -272,6 +484,115 @@ export function DutyRosterClient({
     setConflictPopoverFor(null);
   }
 
+  /** Open drawer from automated guardrail badge alert item */
+  function handleOpenDrawerFromAlert(empOrUndefined: any, date: string, shiftTypeId?: string) {
+    if (!canAssignShifts) return;
+    let targetEmp = empOrUndefined;
+    if (empOrUndefined && empOrUndefined.id) {
+      targetEmp = employees.find((e) => e.id === empOrUndefined.id) || empOrUndefined;
+    } else {
+      // Find an active employee not busy on that date, or fallback to first employee
+      const busyIds = new Set(
+        assignments.filter((a) => a.date === date && a.status !== "cancelled").map((a) => a.employeeId)
+      );
+      targetEmp = employees.find((e) => !busyIds.has(e.id)) || employees[0];
+    }
+    if (targetEmp) {
+      openCellDrawer(targetEmp, date);
+      if (shiftTypeId) {
+        setDrawerShiftTypeId(shiftTypeId);
+      }
+    }
+  }
+
+  /** Automated real-time guardrail alert fired immediately when roster updates */
+  function triggerGuardrailNotification(
+    updatedAssignments: any[],
+    actionDesc: string,
+    targetEmployeeId?: string
+  ) {
+    let violationDetail: string | null = null;
+    let violationType: "critical" | "warning" = "warning";
+    const emp = targetEmployeeId ? employees.find((e) => e.id === targetEmployeeId) : null;
+
+    if (emp) {
+      const empAsgs = updatedAssignments
+        .filter((a) => a.employeeId === emp.id && a.status !== "cancelled")
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      // 1. Weekly hours cap violation check
+      const totalHours = empAsgs.reduce((sum, a) => {
+        const st = shiftTypes.find((s) => s.id === a.shiftTypeId);
+        return sum + netHoursOf(st);
+      }, 0);
+      const cap = emp.maxHoursPerWeek ?? weeklyHoursCap;
+      if (totalHours > cap) {
+        violationDetail = `${emp.fullName} exceeds weekly limit (${totalHours.toFixed(1)}h / ${cap}h max cap)`;
+        violationType = "critical";
+      }
+
+      // 2. Rest interval check (<11h minimum rest rule)
+      if (!violationDetail) {
+        for (let i = 0; i < empAsgs.length - 1; i++) {
+          const curr = empAsgs[i];
+          const next = empAsgs[i + 1];
+          const stCurr = shiftTypes.find((s) => s.id === curr.shiftTypeId);
+          const stNext = shiftTypes.find((s) => s.id === next.shiftTypeId);
+          if (!stCurr || !stNext) continue;
+
+          const endCurr = new Date(`${curr.date}T${stCurr.endTime}:00`);
+          if (stCurr.crossesMidnight || isNightShiftType(stCurr)) {
+            endCurr.setDate(endCurr.getDate() + 1);
+          }
+          const startNext = new Date(`${next.date}T${stNext.startTime}:00`);
+          const restHours = (startNext.getTime() - endCurr.getTime()) / (1000 * 60 * 60);
+          const minRest = settings?.minRestHoursBetweenShifts ?? 11;
+          if (restHours >= 0 && restHours < minRest) {
+            violationDetail = `Rest interval violation for ${emp.fullName}: only ${restHours.toFixed(1)}h rest (< ${minRest}h minimum)`;
+            violationType = "critical";
+            break;
+          }
+        }
+      }
+
+      // 3. Consecutive shifts cap
+      if (!violationDetail) {
+        let consecutive = 1;
+        for (let i = 0; i < empAsgs.length - 1; i++) {
+          const d1 = new Date(empAsgs[i].date);
+          const d2 = new Date(empAsgs[i + 1].date);
+          const diffDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays === 1) {
+            consecutive++;
+            if (consecutive > (settings?.consecutiveShiftsCap ?? 5)) {
+              violationDetail = `${emp.fullName} has ${consecutive} consecutive shifts without mandatory rest day`;
+              violationType = "warning";
+              break;
+            }
+          } else {
+            consecutive = 1;
+          }
+        }
+      }
+    }
+
+    if (violationDetail) {
+      setLiveAlertToast({
+        message: `${actionDesc} · ⚠️ Guardrail Alert: ${violationDetail}`,
+        type: violationType,
+      });
+    } else {
+      setLiveAlertToast({
+        message: `${actionDesc} · ✅ Automated guardrails verified compliant.`,
+        type: "success",
+      });
+    }
+
+    setTimeout(() => {
+      setLiveAlertToast(null);
+    }, 6000);
+  }
+
   /** "Swap staff": move the conflicted date onto a free colleague instead. */
   function swapFromConflict(cellEmployee: any, date: string) {
     if (!canAssignShifts) return;
@@ -296,15 +617,18 @@ export function DutyRosterClient({
     if (!selectedCell) return;
     setIsSavingDrawer(true);
     try {
+      let updatedAssignments = [...assignments];
+      let actionLabel = "";
       if (selectedCell.existingAssignment) {
         const updated = await updateShiftAssignmentAction(selectedCell.existingAssignment.id, {
           shiftTypeId: drawerShiftTypeId,
           wardZone: drawerWardZone,
           notes: drawerHandoverNotes,
         });
-        setAssignments((prev) =>
-          prev.map((a) => (a.id === selectedCell.existingAssignment.id ? { ...a, ...updated.assignment } : a))
+        updatedAssignments = assignments.map((a) =>
+          a.id === selectedCell.existingAssignment.id ? { ...a, ...updated.assignment } : a
         );
+        actionLabel = `Updated shift for ${selectedCell.employee.fullName}`;
       } else {
         const created = await createShiftAssignmentAction({
           employeeId: selectedCell.employee.id,
@@ -314,9 +638,14 @@ export function DutyRosterClient({
           notes: drawerHandoverNotes,
           forceOverrideWarnings: true,
         });
-        setAssignments((prev) => [...prev, created]);
+        updatedAssignments = [...assignments, created];
+        actionLabel = `Assigned shift to ${selectedCell.employee.fullName}`;
       }
+      setAssignments(updatedAssignments);
       setIsDrawerOpen(false);
+
+      // Trigger immediate automated guardrail alert
+      triggerGuardrailNotification(updatedAssignments, actionLabel, selectedCell.employee.id);
       router.refresh();
     } catch (err: any) {
       alert("Error: " + err.message);
@@ -330,8 +659,16 @@ export function DutyRosterClient({
     setIsSavingDrawer(true);
     try {
       await deleteShiftAssignmentAction(selectedCell.existingAssignment.id);
-      setAssignments((prev) => prev.filter((a) => a.id !== selectedCell.existingAssignment.id));
+      const updatedAssignments = assignments.filter((a) => a.id !== selectedCell.existingAssignment.id);
+      setAssignments(updatedAssignments);
       setIsDrawerOpen(false);
+
+      // Trigger immediate automated guardrail alert
+      triggerGuardrailNotification(
+        updatedAssignments,
+        `Removed shift assignment for ${selectedCell.employee.fullName}`,
+        selectedCell.employee.id
+      );
       router.refresh();
     } catch (err: any) {
       alert("Error: " + err.message);
@@ -343,11 +680,20 @@ export function DutyRosterClient({
   /* ─── Grid config ────────────────────────────────────────────────────────── */
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* ── Header: controls sit directly on the parchment canvas ── */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div
+        className="roster-header-container"
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ flex: "1 1 280px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <h1
               style={{
                 fontSize: 32,
@@ -360,6 +706,16 @@ export function DutyRosterClient({
             >
               Roster
             </h1>
+
+            {/* ── Automated Real-Time Guardrail Notification Badge ── */}
+            <RosterGuardrailBadge
+              fatigueAlerts={liveGuardrailAudit.fatigueAlerts}
+              unfilledAlerts={liveGuardrailAudit.unfilledAlerts}
+              onOpenDrawer={handleOpenDrawerFromAlert}
+              onSmartFill={handleSmartFill}
+              isSmartFilling={isSmartFilling}
+            />
+
             {conflictCount > 0 && (
               <button
                 onClick={() => setIsConflictModalOpen(true)}
@@ -380,12 +736,12 @@ export function DutyRosterClient({
             )}
           </div>
           {/* Week: derived from the SAME date source the server page used */}
-          <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
             <button
               aria-label="Previous week"
               style={{
-                width: 24,
-                height: 24,
+                width: 28,
+                height: 28,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -398,14 +754,14 @@ export function DutyRosterClient({
             >
               <ChevronLeft style={{ width: 15, height: 15 }} />
             </button>
-            <span style={{ fontSize: 15, color: "var(--ink-secondary)", fontVariantNumeric: "tabular-nums" }}>
+            <span style={{ fontSize: 14, color: "var(--ink-secondary)", fontVariantNumeric: "tabular-nums" }}>
               {week.weekLabel}
             </span>
             <button
               aria-label="Next week"
               style={{
-                width: 24,
-                height: 24,
+                width: 28,
+                height: 28,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -430,13 +786,104 @@ export function DutyRosterClient({
         {/* Exactly ONE honey action in the viewport */}
         {canAssignShifts && (
           <button
-            onClick={() => openCellDrawer(employees[0], week.dates.find((d) => d.isToday)!.date)}
+            onClick={() => {
+              const todayDate = week.dates.find((d) => d.isToday)?.date || week.startDate;
+              openCellDrawer(employees[0], todayDate);
+            }}
             className="zbtn zbtn-primary"
+            style={{ flexShrink: 0 }}
           >
+            <Plus style={{ width: 16, height: 16 }} />
             <span>Assign shift</span>
           </button>
         )}
       </div>
+
+      {/* ── Real-Time Automated Guardrail Alert Banner ── */}
+      {liveAlertToast && (
+        <div
+          role="alert"
+          style={{
+            padding: "12px 16px",
+            borderRadius: 12,
+            background:
+              liveAlertToast.type === "critical"
+                ? "var(--critical-bg)"
+                : liveAlertToast.type === "warning"
+                ? "var(--apricot)"
+                : "rgba(16, 185, 129, 0.12)",
+            border:
+              liveAlertToast.type === "critical"
+                ? "1px solid rgba(155, 44, 31, 0.35)"
+                : liveAlertToast.type === "warning"
+                ? "1px solid rgba(217, 119, 6, 0.3)"
+                : "1px solid rgba(16, 185, 129, 0.35)",
+            color:
+              liveAlertToast.type === "critical"
+                ? "var(--critical-text)"
+                : liveAlertToast.type === "warning"
+                ? "#78350f"
+                : "#065f46",
+            fontSize: 13,
+            fontWeight: 500,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+            {liveAlertToast.type === "critical" ? (
+              <AlertTriangle style={{ width: 16, height: 16, flexShrink: 0 }} />
+            ) : liveAlertToast.type === "warning" ? (
+              <ShieldAlert style={{ width: 16, height: 16, flexShrink: 0 }} />
+            ) : (
+              <CheckCircle2 style={{ width: 16, height: 16, flexShrink: 0 }} />
+            )}
+            <span>{liveAlertToast.message}</span>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                const btn = document.querySelector(".roster-guardrail-badge-btn") as HTMLButtonElement | null;
+                btn?.click();
+              }}
+              style={{
+                background: "var(--paper)",
+                border: "1px solid var(--ink-border)",
+                borderRadius: 8,
+                padding: "4px 10px",
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--ink)",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              Audit Details ({liveGuardrailAudit.totalAlerts})
+            </button>
+            <button
+              type="button"
+              onClick={() => setLiveAlertToast(null)}
+              aria-label="Dismiss alert"
+              style={{
+                background: "none",
+                border: "none",
+                color: "inherit",
+                cursor: "pointer",
+                padding: 4,
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <X style={{ width: 14, height: 14 }} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Toolbar: one row, never wraps at desktop widths ── */}
       <div
@@ -691,93 +1138,156 @@ export function DutyRosterClient({
           settings={settings}
         />
       ) : (
-      <div
-        className="ztable-roster-wrap"
-        style={{
-          background: "var(--paper)",
-          border: "1px solid var(--ink-border)",
-          borderRadius: 12,
-          maxHeight: "calc(100vh - 320px)",
-          minHeight: 320,
-        }}
-      >
-        <div style={{ overflow: "auto", maxHeight: "inherit", borderRadius: "inherit" }}>
-          <table className="ztable ztable-roster">
-            <colgroup>
-              <col style={{ width: 220 }} />
-              <col style={{ width: 76 }} />
-              <col style={{ width: 64 }} />
-              {week.dates.map((d) => (
-                <col key={d.date} style={{ width: 112, minWidth: 112 }} />
-              ))}
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="staff-cell" style={{ position: "sticky", left: 0, zIndex: 5, background: "var(--paper)", textAlign: "left" }}>
-                  Staff member
-                </th>
-                <th className="num">Hours</th>
-                <th className="num">Nights</th>
-                {week.dates.map((d) => (
-                  <th key={d.date} style={{ textAlign: "center", position: "relative" }}>
-                    <span style={{ display: "block", fontSize: 13, color: "var(--ink-tertiary)", whiteSpace: "nowrap" }}>
-                      {d.weekday}
-                    </span>
-                    {d.isToday ? (
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: 24,
-                          height: 24,
-                          borderRadius: "50%",
-                          background: "var(--ink)",
-                          color: "var(--paper)",
-                          fontSize: 14,
-                          fontWeight: 500,
-                          marginTop: 2,
-                          fontVariantNumeric: "tabular-nums",
-                        }}
-                      >
-                        {d.dayNumber}
-                      </span>
-                    ) : (
-                      <span style={{ display: "block", fontSize: 16, fontWeight: 500, color: "var(--ink)", marginTop: 2, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-                        {d.dayNumber}
-                      </span>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {groupedRows.length === 0 && (
-                <tr>
-                  <td colSpan={3 + week.dates.length} style={{ textAlign: "center", color: "var(--ink-tertiary)", fontSize: 14 }}>
-                    No staff match these filters.
-                  </td>
-                </tr>
-              )}
-              {groupedRows.map(([designation, group]) => [
-                <tr key={`hdr-${designation}`} className="roster-group-row">
-                  <td
-                    className="staff-cell"
-                    colSpan={3 + week.dates.length}
+      <>
+        {/* ── Mobile Day Selector (Visible on small screens) ── */}
+        <div className="mobile-day-selector" style={{ display: "none", alignItems: "center", gap: 6, margin: "2px 0 8px" }}>
+          <button
+            type="button"
+            onClick={() => setSelectedDayMobile("all")}
+            style={{
+              padding: "6px 14px",
+              borderRadius: 10,
+              fontSize: 13,
+              fontWeight: selectedDayMobile === "all" ? 600 : 400,
+              background: selectedDayMobile === "all" ? "var(--ink)" : "var(--linen)",
+              color: selectedDayMobile === "all" ? "var(--paper)" : "var(--ink)",
+              border: selectedDayMobile === "all" ? "1px solid var(--ink)" : "1px solid var(--ink-border)",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            All 7 Days
+          </button>
+          {week.dates.map((d) => {
+            const isSelected = selectedDayMobile === d.date;
+            return (
+              <button
+                key={d.date}
+                type="button"
+                onClick={() => setSelectedDayMobile(d.date)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 10,
+                  fontSize: 12.5,
+                  fontWeight: isSelected ? 600 : 400,
+                  background: isSelected ? "var(--ink)" : "var(--linen)",
+                  color: isSelected ? "var(--paper)" : "var(--ink)",
+                  border: isSelected ? "1px solid var(--ink)" : "1px solid var(--ink-border)",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <span>{d.weekday}</span>
+                <span style={{ opacity: isSelected ? 0.9 : 0.65 }}>{d.dayNumber}</span>
+                {d.isToday && (
+                  <span
                     style={{
-                      background: "var(--linen)",
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: "var(--ink)",
-                      height: 36,
-                      borderBottom: "1px solid var(--ink-border)",
-                      position: "sticky",
-                      left: 0,
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: isSelected ? "var(--honey)" : "var(--ink)",
                     }}
-                  >
-                    {designation} · {group.length}
-                  </td>
-                </tr>,
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div
+          className="ztable-roster-wrap"
+          style={{
+            background: "var(--paper)",
+            border: "1px solid var(--ink-border)",
+            borderRadius: 12,
+            maxHeight: "calc(100vh - 320px)",
+            minHeight: 320,
+          }}
+        >
+          <div style={{ overflow: "auto", maxHeight: "inherit", borderRadius: "inherit" }}>
+            <table className="ztable ztable-roster">
+              <colgroup>
+                <col style={{ width: 220 }} />
+                <col style={{ width: 76 }} />
+                <col style={{ width: 64 }} />
+                {visibleDates.map((d) => (
+                  <col key={d.date} style={{ width: selectedDayMobile === "all" ? 112 : "auto", minWidth: 100 }} />
+                ))}
+              </colgroup>
+              <thead>
+                <tr>
+                  <th className="staff-cell" style={{ position: "sticky", left: 0, zIndex: 5, background: "var(--paper)", textAlign: "left" }}>
+                    Staff member
+                  </th>
+                  <th className="num">Hours</th>
+                  <th className="num">Nights</th>
+                  {visibleDates.map((d) => (
+                    <th key={d.date} style={{ textAlign: "center", position: "relative" }}>
+                      <span style={{ display: "block", fontSize: 13, color: "var(--ink-tertiary)", whiteSpace: "nowrap" }}>
+                        {d.weekday}
+                      </span>
+                      {d.isToday ? (
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 24,
+                            height: 24,
+                            borderRadius: "50%",
+                            background: "var(--ink)",
+                            color: "var(--paper)",
+                            fontSize: 14,
+                            fontWeight: 500,
+                            marginTop: 2,
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          {d.dayNumber}
+                        </span>
+                      ) : (
+                        <span style={{ display: "block", fontSize: 16, fontWeight: 500, color: "var(--ink)", marginTop: 2, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                          {d.dayNumber}
+                        </span>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {groupedRows.length === 0 && (
+                  <tr>
+                    <td colSpan={3 + visibleDates.length} style={{ textAlign: "center", color: "var(--ink-tertiary)", fontSize: 14 }}>
+                      No staff match these filters.
+                    </td>
+                  </tr>
+                )}
+                {groupedRows.map(([designation, group]) => [
+                  <tr key={`hdr-${designation}`} className="roster-group-row">
+                    <td
+                      className="staff-cell"
+                      colSpan={3 + visibleDates.length}
+                      style={{
+                        background: "var(--linen)",
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: "var(--ink)",
+                        height: 36,
+                        borderBottom: "1px solid var(--ink-border)",
+                        position: "sticky",
+                        left: 0,
+                      }}
+                    >
+                      {designation} · {group.length}
+                    </td>
+                  </tr>,
                 ...group.map((emp) => {
                   const empAssignments = assignments.filter(
                     (a) => a.employeeId === emp.id && a.status !== "cancelled"
@@ -821,7 +1331,7 @@ export function DutyRosterClient({
                         {nightsCount}
                       </td>
 
-                      {week.dates.map((d) => {
+                      {visibleDates.map((d) => {
                         const asg = assignments.find(
                           (a) => a.employeeId === emp.id && a.date === d.date && a.status !== "cancelled"
                         );
@@ -1030,7 +1540,7 @@ export function DutyRosterClient({
                 <td className="num" style={{ background: "var(--linen)", color: "var(--ink-secondary)", borderBottom: "none" }}>
                   {weeklyTotals.nights}
                 </td>
-                {week.dates.map((d) => {
+                {visibleDates.map((d) => {
                   const day = weeklyTotals.perDay[d.date];
                   const short = day.scheduled < requiredPerDay;
                   return (
@@ -1056,31 +1566,41 @@ export function DutyRosterClient({
           </table>
         </div>
       </div>
+      </>
       )}
 
-      {/* ── Slide-Over Assignment Drawer ── */}
+      {/* ── Slide-Over Assignment Drawer (Responsive Bottom-Sheet on mobile) ── */}
       {isDrawerOpen && selectedCell && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 50,
-            background: "rgba(18, 23, 24, 0.4)",
+            zIndex: 1000,
+            background: "rgba(18, 23, 24, 0.45)",
+            backdropFilter: "blur(2px)",
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-end",
             justifyContent: "flex-end",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsDrawerOpen(false);
           }}
         >
           <div
-            className="zelt-surface"
+            className="zelt-surface roster-drawer-surface"
             style={{
               width: 380,
+              maxWidth: "100vw",
               height: "100%",
-              borderRadius: "12px 0 0 12px",
+              maxHeight: "92vh",
+              borderRadius: "16px 0 0 16px",
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
               padding: 24,
+              overflowY: "auto",
+              background: "var(--paper)",
+              boxShadow: "none",
             }}
           >
             <div>

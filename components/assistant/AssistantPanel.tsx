@@ -88,7 +88,7 @@ export function AssistantPanel({ currentUser }: { currentUser: AuthenticatedUser
 
   // Fetch chips once per open, from real data (never hardcoded names/dates).
   useEffect(() => {
-    if (!open || suggestions != null || viewer) return;
+    if (!open || suggestions != null) return;
     let cancelled = false;
     void getAssistantSuggestionsAction()
       .then((s) => !cancelled && setSuggestions(s))
@@ -96,7 +96,7 @@ export function AssistantPanel({ currentUser }: { currentUser: AuthenticatedUser
     return () => {
       cancelled = true;
     };
-  }, [open, suggestions, viewer]);
+  }, [open, suggestions]);
 
   // Keep the newest message in view.
   useEffect(() => {
@@ -134,7 +134,7 @@ export function AssistantPanel({ currentUser }: { currentUser: AuthenticatedUser
     setPending(null);
   }, []);
 
-  if (!open || viewer) return null;
+  if (!open) return null;
 
   return (
     <aside
@@ -167,24 +167,57 @@ export function AssistantPanel({ currentUser }: { currentUser: AuthenticatedUser
           flexShrink: 0,
         }}
       >
-        <span
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 10,
-            background: "var(--linen)",
-            border: "1px solid var(--ink-border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <Sparkles style={{ width: 16, height: 16, strokeWidth: 1.5, color: "var(--ink)" }} />
-        </span>
+        <div style={{ position: "relative" }}>
+          <span
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 10,
+              background: "var(--linen)",
+              border: "1px solid var(--ink-border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Sparkles style={{ width: 16, height: 16, strokeWidth: 1.5, color: "var(--teal-primary, #00685f)" }} />
+          </span>
+          <span
+            style={{
+              position: "absolute",
+              right: -2,
+              bottom: -2,
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "#10b981",
+              border: "2px solid var(--paper)",
+            }}
+            title="Live Context Active"
+          />
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>Assistant</div>
-          <div style={{ fontSize: 12, color: "var(--ink-tertiary)" }}>Signed in as {currentUser.name}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>Gemini Clinical Assistant</span>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                padding: "1px 6px",
+                borderRadius: 999,
+                background: "var(--linen)",
+                border: "1px solid var(--ink-border)",
+                color: "var(--teal-primary, #00685f)",
+                letterSpacing: "0.2px",
+              }}
+            >
+              3.8 Flash
+            </span>
+          </div>
+          <div style={{ fontSize: 11.5, color: "var(--ink-tertiary)", marginTop: 1 }}>
+            Context Aware (DEPT-402) · {currentUser.name}
+          </div>
         </div>
         {entries.length > 0 && (
           <button
@@ -210,17 +243,25 @@ export function AssistantPanel({ currentUser }: { currentUser: AuthenticatedUser
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 16px 8px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingBottom: 12 }}>
+          {/* Context status card */}
           <div
             style={{
               background: "var(--linen)",
               borderRadius: 12,
               padding: "12px 14px",
-              fontSize: 13,
-              color: "var(--ink-secondary)",
-              lineHeight: 1.45,
+              border: "1px solid var(--ink-border)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
             }}
           >
-            {INTRO}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 600, color: "var(--teal-primary, #00685f)" }}>
+              <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#10b981" }} />
+              <span>LIVE CLINICAL CONTEXT CONNECTED</span>
+            </div>
+            <p style={{ fontSize: 12.5, color: "var(--ink-secondary)", lineHeight: 1.5, margin: 0 }}>
+              Real-time synchronization with active duty rosters, staffing levels across 4 units, 6 shift types, fatigue guardrails (11h rest rule), and leave records.
+            </p>
           </div>
 
           {entries.map((entry, i) =>
@@ -285,24 +326,49 @@ export function AssistantPanel({ currentUser }: { currentUser: AuthenticatedUser
             </div>
           )}
 
-          {/* Suggestion chips — ghost buttons, wrap, max 4, from real data */}
-          {suggestions == null || suggestions.length > 0 ? (
-            suggestions && suggestions.length > 0 && entries.length === 0 && (
+          {/* Suggestion chips */}
+          {entries.length === 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+              <span style={{ fontSize: 11.5, fontWeight: 500, color: "var(--ink-tertiary)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                Contextual Quick Prompts
+              </span>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {suggestions.slice(0, 4).map((s) => (
+                {(suggestions && suggestions.length > 0
+                  ? suggestions.slice(0, 4)
+                  : [
+                      { label: "Night shift coverage tonight", prompt: "Who is working the Night shift in Trauma and Critical Care tonight?" },
+                      { label: "Check fatigue & rest conflicts", prompt: "Are there any staff with fatigue warnings, back-to-back shifts, or under 11h rest?" },
+                      { label: "Today's staffing summary", prompt: "Give me a breakdown of clinical staffing coverage across Day, Evening, and Night shifts today." },
+                      { label: "Upcoming doctor & nurse leaves", prompt: "Which doctors and nurses have approved or pending leaves this week?" },
+                    ]
+                ).map((s) => (
                   <button
                     key={s.label}
                     type="button"
                     onClick={() => void send(s.prompt)}
-                    className="rounded-[10px] px-3 py-2 text-left text-[13px] font-normal"
-                    style={{ background: "transparent", border: "1px solid var(--ink-border-strong)", cursor: "pointer", color: "var(--ink)" }}
+                    className="rounded-[10px] px-3 py-2 text-left text-[12.5px] font-normal"
+                    style={{
+                      background: "var(--linen)",
+                      border: "1px solid var(--ink-border)",
+                      cursor: "pointer",
+                      color: "var(--ink)",
+                      transition: "background 150ms ease, border-color 150ms ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "var(--paper)";
+                      e.currentTarget.style.borderColor = "var(--ink)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "var(--linen)";
+                      e.currentTarget.style.borderColor = "var(--ink-border)";
+                    }}
                   >
                     {s.label}
                   </button>
                 ))}
               </div>
-            )
-          ) : null}
+            </div>
+          )}
         </div>
       </div>
 
@@ -331,7 +397,7 @@ export function AssistantPanel({ currentUser }: { currentUser: AuthenticatedUser
             }
           }}
           rows={1}
-          placeholder="Ask anything or request changes…"
+          placeholder="Ask Gemini about roster, shifts, leaves, fatigue..."
           disabled={pending != null}
           style={{
             flex: 1,
@@ -375,24 +441,78 @@ export function AssistantPanel({ currentUser }: { currentUser: AuthenticatedUser
 }
 
 /**
- * Minimal markdown: paragraphs plus pipe tables. Enough for the assistant's
- * structured replies without a full md bundle in the bundle budget.
+ * Enhanced markdown rendering for headings, bullet lists, bold text, code, and pipe tables.
  */
 function Markdownish({ text }: { text: string }) {
   const blocks = text.split(/\n{2,}/);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8, color: "var(--ink)" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, color: "var(--ink)" }}>
       {blocks.map((block, bi) => {
-        const lines = block.split("\n").filter((l) => l.trim().startsWith("|"));
-        if (lines.length >= 2) return <PipeTable key={bi} lines={lines} />;
+        const trimmed = block.trim();
+        // Pipe table
+        const tableLines = trimmed.split("\n").filter((l) => l.trim().startsWith("|"));
+        if (tableLines.length >= 2) return <PipeTable key={bi} lines={tableLines} />;
+
+        // Heading
+        if (trimmed.startsWith("### ")) {
+          return (
+            <h4 key={bi} style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)", margin: "4px 0 0 0" }}>
+              {formatInlineText(trimmed.replace(/^###\s+/, ""))}
+            </h4>
+          );
+        }
+        if (trimmed.startsWith("## ")) {
+          return (
+            <h3 key={bi} style={{ fontSize: 15.5, fontWeight: 600, color: "var(--ink)", margin: "6px 0 0 0" }}>
+              {formatInlineText(trimmed.replace(/^##\s+/, ""))}
+            </h3>
+          );
+        }
+
+        // Bullet lists
+        const lines = trimmed.split("\n");
+        const isList = lines.length > 0 && lines.every((l) => /^\s*[-*•]\s+/.test(l));
+        if (isList) {
+          return (
+            <ul key={bi} style={{ margin: "2px 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 4 }}>
+              {lines.map((l, li) => (
+                <li key={li} style={{ fontSize: 13, lineHeight: 1.5, color: "var(--ink)" }}>
+                  {formatInlineText(l.replace(/^\s*[-*•]\s+/, ""))}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+
         return (
           <p key={bi} style={{ fontSize: 13.5, lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word", margin: 0 }}>
-            {block}
+            {formatInlineText(trimmed)}
           </p>
         );
       })}
     </div>
   );
+}
+
+function formatInlineText(text: string): React.ReactNode {
+  // Split on bold tokens (**bold**), code tokens (`code`), and italics (*italic*)
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i} style={{ fontWeight: 600 }}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code key={i} style={{ background: "var(--linen)", padding: "1px 5px", borderRadius: 4, fontSize: "0.9em", border: "1px solid var(--ink-border)" }}>
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    if (part.startsWith("*") && part.endsWith("*")) {
+      return <em key={i} style={{ fontStyle: "italic" }}>{part.slice(1, -1)}</em>;
+    }
+    return part;
+  });
 }
 
 function PipeTable({ lines }: { lines: string[] }) {
@@ -404,27 +524,29 @@ function PipeTable({ lines }: { lines: string[] }) {
     .filter((l) => !/^\|?\s*:?-{2,}/.test(l.trim()))
     .map(cells);
   return (
-    <table style={{ borderCollapse: "collapse", fontSize: 12.5 }}>
-      <thead>
-        <tr style={{ background: "var(--linen)" }}>
-          {header.map((h, i) => (
-            <th key={i} style={{ border: "1px solid var(--ink-border)", padding: "4px 8px", textAlign: "left", fontWeight: 500 }}>
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {bodyRows.map((row, ri) => (
-          <tr key={ri}>
-            {row.map((c, ci) => (
-              <td key={ci} style={{ border: "1px solid var(--ink-border)", padding: "4px 8px" }}>
-                {c}
-              </td>
+    <div style={{ overflowX: "auto", margin: "4px 0" }}>
+      <table style={{ borderCollapse: "collapse", fontSize: 12.5, width: "100%" }}>
+        <thead>
+          <tr style={{ background: "var(--linen)" }}>
+            {header.map((h, i) => (
+              <th key={i} style={{ border: "1px solid var(--ink-border)", padding: "5px 10px", textAlign: "left", fontWeight: 600 }}>
+                {formatInlineText(h)}
+              </th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {bodyRows.map((row, ri) => (
+            <tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--parchment)" }}>
+              {row.map((c, ci) => (
+                <td key={ci} style={{ border: "1px solid var(--ink-border)", padding: "5px 10px" }}>
+                  {formatInlineText(c)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

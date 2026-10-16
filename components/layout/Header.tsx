@@ -84,8 +84,8 @@ export function Header({ currentUser }: HeaderProps) {
         </span>
       </div>
 
-      {/* Right: Assistant + user button & menu */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      {/* Right: Gemini Assistant + user button & menu */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button
           onClick={() => assistantStore.toggle()}
           style={{
@@ -94,25 +94,41 @@ export function Header({ currentUser }: HeaderProps) {
             gap: 8,
             height: 36,
             padding: "0 14px",
-            borderRadius: 12,
-            background: "transparent",
-            border: "none",
+            borderRadius: 10,
+            background: "var(--linen)",
+            border: "1px solid var(--ink-border)",
             cursor: "pointer",
-            fontSize: 14,
+            fontSize: 13.5,
             color: "var(--ink)",
             fontFamily: "inherit",
             fontWeight: 500,
-            transition: "background-color 150ms ease",
+            transition: "all 150ms ease",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--linen)";
+            e.currentTarget.style.background = "var(--paper)";
+            e.currentTarget.style.borderColor = "var(--teal-primary, #00685f)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.background = "var(--linen)";
+            e.currentTarget.style.borderColor = "var(--ink-border)";
           }}
+          title="Open Gemini Context-Aware Assistant"
         >
-          <Sparkles style={{ width: 16, height: 16, strokeWidth: 1.5 }} />
-          <span>Assistant</span>
+          <Sparkles style={{ width: 15, height: 15, strokeWidth: 1.7, color: "var(--teal-primary, #00685f)" }} />
+          <span>Gemini Assistant</span>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              padding: "1px 6px",
+              borderRadius: 6,
+              background: "var(--paper)",
+              border: "1px solid var(--ink-border)",
+              color: "var(--teal-primary, #00685f)",
+            }}
+          >
+            AI
+          </span>
         </button>
         <div ref={menuRef} style={{ position: "relative" }}>
         {/* Role is shown once, inside the menu — never as a chip in the bar itself */}

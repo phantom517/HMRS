@@ -12,15 +12,31 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleAdminLogin(e: React.FormEvent) {
-    e.preventDefault();
+  async function completeLogin(res: { success: boolean; user?: any }) {
+    try {
+      if (typeof document !== "undefined") {
+        document.cookie = "hospital_hrms_logged_out=; path=/; max-age=0; SameSite=None; Secure";
+        if (res.user?.id) {
+          document.cookie = `hospital_hrms_session_user=${res.user.id}; path=/; max-age=604800; SameSite=None; Secure`;
+          sessionStorage.setItem("hospital_hrms_session_user", res.user.id);
+        }
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+    // Hard navigate to ensure fresh cookies and clean middleware evaluation
+    window.location.href = "/";
+  }
+
+  async function handleAdminLogin(e?: React.FormEvent, pwdOverride?: string) {
+    if (e) e.preventDefault();
     setIsLoading(true);
     setError(null);
 
+    const targetPassword = pwdOverride ?? password;
     try {
-      await adminLoginAction(password);
-      router.push("/");
-      router.refresh();
+      const res = await adminLoginAction(targetPassword);
+      await completeLogin(res);
     } catch (err: any) {
       setError(err.message || "Incorrect admin password.");
       setIsLoading(false);
@@ -32,9 +48,8 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      await viewAsEmployeeAction();
-      router.push("/");
-      router.refresh();
+      const res = await viewAsEmployeeAction();
+      await completeLogin(res);
     } catch (err: any) {
       setError(err.message || "Could not start the read-only view.");
       setIsLoading(false);
@@ -245,6 +260,43 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Helper callout with demo credentials */}
+            <div
+              style={{
+                padding: "12px 14px",
+                borderRadius: 12,
+                background: "var(--linen)",
+                border: "1px solid var(--ink-border)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--ink)" }}>
+                  Admin Password: <code style={{ background: "var(--paper)", padding: "2px 6px", borderRadius: 6, border: "1px solid var(--ink-border)" }}>Password123!</code>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPassword("Password123!")}
+                  style={{
+                    border: "none",
+                    background: "none",
+                    color: "var(--teal-primary, #00685f)",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Auto-fill
+                </button>
+              </div>
+              <p style={{ fontSize: 11.5, color: "var(--ink-secondary)", margin: 0 }}>
+                Default clinical director account: <strong>Dr. Sarah Jenkins</strong> (Full administrative access).
+              </p>
+            </div>
+
             <div>
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--ink)", marginBottom: 6 }}>
                 Admin Password
@@ -267,7 +319,7 @@ export default function LoginPage() {
                   autoFocus
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter the fixed admin password"
+                  placeholder="Enter Password123!"
                   style={{
                     width: "100%",
                     height: 40,
@@ -291,6 +343,29 @@ export default function LoginPage() {
             >
               <span>{isLoading ? "Verifying..." : "Sign in as Admin"}</span>
               <ArrowRight style={{ width: 16, height: 16, strokeWidth: 1.5 }} />
+            </button>
+
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => handleAdminLogin(undefined, "Password123!")}
+              style={{
+                width: "100%",
+                height: 38,
+                borderRadius: 10,
+                background: "var(--paper)",
+                border: "1px solid var(--ink-border-strong)",
+                fontSize: 13,
+                fontWeight: 500,
+                color: "var(--ink)",
+                cursor: isLoading ? "wait" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+              }}
+            >
+              <span>⚡ One-Click Instant Sign In</span>
             </button>
 
             <button

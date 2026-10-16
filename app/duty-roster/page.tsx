@@ -36,8 +36,11 @@ export default async function DutyRosterPage() {
       <Sidebar currentUser={currentUser} activeConflictsCount={sidebarCounts.activeConflictsCount} />
       <div className="app-shell" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <Header currentUser={currentUser} employees={employeesData.employees} shiftTypes={shiftTypes} />
-        {/* 96px bottom padding keeps the floating AI assistant from ever overlapping table content */}
-        <main style={{ maxWidth: 1320, width: "100%", margin: "0 auto", padding: "32px 36px 96px", flex: 1 }}>
+        {/* Responsive padding: 16px on mobile, 32px on desktop */}
+        <main
+          className="zpage-main"
+          style={{ maxWidth: 1320, width: "100%", margin: "0 auto", flex: 1, paddingBottom: 96 }}
+        >
           <DutyRosterClient
             currentUser={currentUser}
             employees={employeesData.employees}

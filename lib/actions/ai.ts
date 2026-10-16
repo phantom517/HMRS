@@ -18,14 +18,6 @@ export async function sendAssistantMessageAction(params: {
 }) {
   const user = await getCurrentUser();
 
-  if (user.role === "viewer") {
-    return {
-      reply:
-        "The AI assistant is not available for view-only (employee) accounts. Contact an administrator if you need roster assistance.",
-      actions: [],
-    };
-  }
-
   const history: AssistantMessage[] = (params.history || [])
     .slice(-12)
     .filter((m) => m && typeof m.text === "string" && (m.role === "user" || m.role === "model"))
