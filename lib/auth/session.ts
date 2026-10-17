@@ -248,17 +248,7 @@ export async function startEmployeeView(): Promise<AuthenticatedUser> {
   const all = (await db.getUsers()) as Array<any>;
   let viewer =
     all.find((u) => u.role === "viewer" && u.active) ||
-    await (async () => {
-      if (!drizzleAvailable()) return null;
-      try {
-        const { drizzleDb } = await import("@/lib/db");
-        if (!drizzleDb) return null;
-        const rows = await drizzleDb.select().from(users).where(eq(users.role, "viewer")).limit(1);
-        return rows[0] || null;
-      } catch {
-        return null;
-      }
-    })();
+    (await db.getFirstViewerUser());
 
   if (!viewer) {
     // Auto-create viewer in memory/db if missing

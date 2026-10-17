@@ -12,13 +12,13 @@ import {
   Clock4,
   BarChart3,
   Settings,
+  Sparkles,
   LogOut,
   Menu,
   X,
 } from "lucide-react";
 import { AuthenticatedUser } from "@/lib/auth/session";
 import { logoutAction } from "@/lib/actions/auth";
-import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 
 interface SidebarProps {
   currentUser: AuthenticatedUser;
@@ -28,7 +28,6 @@ interface SidebarProps {
 }
 
 export function Sidebar({
-  currentUser,
   activeConflictsCount = 2,
 }: SidebarProps) {
   const pathname = usePathname();
@@ -42,6 +41,7 @@ export function Sidebar({
     { label: "Leave", href: "/leave-off-days", icon: Plane },
     { label: "Shift types", href: "/shift-types", icon: Clock4 },
     { label: "Reports", href: "/reports-statistics", icon: BarChart3 },
+    { label: "Assistant", href: "/assistant", icon: Sparkles },
   ];
 
   const isActive = (href: string) =>
@@ -53,7 +53,8 @@ export function Sidebar({
 
   return (
     <>
-      {/* Mobile: hamburger toggle (fixed, top-left, below the top bar) */}
+      {/* Mobile: floating menu button. Sits in the page's bottom gutter so it
+          floats over padding rather than over content. */}
       <button
         className="sidebar-toggle"
         aria-label="Open navigation"
@@ -61,7 +62,7 @@ export function Sidebar({
         onClick={() => setMobileOpen(true)}
         style={{
           position: "fixed",
-          left: 12,
+          left: 16,
           bottom: 16,
           width: 48,
           height: 48,
@@ -300,9 +301,6 @@ export function Sidebar({
             </button>
           </form>
         </div>
-
-        {/* Floating Gemini AI assistant (available on every page) */}
-        <AssistantPanel currentUser={currentUser} />
       </nav>
     </>
   );

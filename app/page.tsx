@@ -46,7 +46,7 @@ export default async function DashboardPage() {
           employees={employeesData.employees}
           shiftTypes={shiftTypes}
         />
-        <main style={{ flex: 1 }}>
+        <main className="zpage-main">
           <DashboardClient
             currentUser={currentUser}
             employees={employeesData.employees}

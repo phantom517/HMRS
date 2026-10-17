@@ -235,13 +235,38 @@ export function UnitsRolesTab({
 
   return (
     <div className="flex w-full flex-col gap-4">
+      {/* Sub-switcher: the single "Units & roles" tab strips to two views via ?tab=… */}
+      <div className="flex w-fit items-center gap-1 self-start" role="tablist" aria-label="Units or roles">
+        {(["units", "roles"] as const).map((t) => {
+          const selected = tab === t;
+          const count = t === "units" ? units.length : roles.length;
+          return (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => router.push(`/settings?tab=${t}`)}
+              className="inline-flex h-9 items-center gap-2 rounded-[10px] px-4 text-[14px] outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--ink)"
+              style={{
+                background: selected ? "var(--paper)" : "transparent",
+                color: selected ? "var(--ink)" : "var(--ink-secondary)",
+                border: `1px solid ${selected ? "var(--ink-border)" : "transparent"}`,
+                fontWeight: selected ? 500 : 400,
+              }}
+            >
+              <span>{t === "units" ? "Units" : "Roles"}</span>
+              <span className="text-[13px] font-normal text-(--ink-tertiary)">{count}</span>
+            </button>
+          );
+        })}
+      </div>
       {error && (
         <div role="alert" className="rounded-xl border border-(--ink-border) bg-(--critical-bg) px-4 py-3 text-[14px] text-(--critical-text)">
           {error}
         </div>
       )}
-      {tab === "units" && (
-        <div className="overflow-hidden rounded-xl border border-(--ink-border) bg-(--paper)">
+      {tab === "units" && (          <div className="overflow-hidden rounded-xl border border-(--ink-border) bg-(--paper)">
           {units.length === 0 ? (
             <div className="p-10">
               <Empty>
@@ -259,6 +284,17 @@ export function UnitsRolesTab({
               </Empty>
             </div>
           ) : (
+            <>
+            <div className="flex items-center justify-between border-b border-(--ink-border) bg-(--linen) px-5 py-2">
+              <span className="text-[13px] text-(--ink-secondary)">
+                {sortedUnits.length} unit{sortedUnits.length === 1 ? "" : "s"}
+              </span>
+              {canEdit && (
+                <Button disabled={busy} onClick={newUnit} className="h-8 rounded-lg px-3 text-[13px] font-medium">
+                  Add unit
+                </Button>
+              )}
+            </div>
             <Table className="ztable">
               <TableHeader>
                 <TableRow className="border-(--ink-border) bg-(--linen)">
@@ -299,7 +335,9 @@ export function UnitsRolesTab({
                             canDelete
                             active={active}
                             onDeactivate={() => {
-                              void updateUnitAction(unit.id, { active: !active }).then(() => router.refresh());
+                              void updateUnitAction(unit.id, { active: !active })
+                                .then(() => router.refresh())
+                                .catch(fail);
                             }}
                             onDelete={() => setConfirmDelete({ kind: "units", id: unit.id, name: unit.name })}
                             onDeleteDisabled={staffCount > 0}
@@ -316,6 +354,7 @@ export function UnitsRolesTab({
                 })}
               </TableBody>
             </Table>
+            </>
           )}
         </div>
       )}
@@ -339,6 +378,17 @@ export function UnitsRolesTab({
               </Empty>
             </div>
           ) : (
+            <>
+            <div className="flex items-center justify-between border-b border-(--ink-border) bg-(--linen) px-5 py-2">
+              <span className="text-[13px] text-(--ink-secondary)">
+                {sortedRoles.length} role{sortedRoles.length === 1 ? "" : "s"}
+              </span>
+              {canEdit && (
+                <Button disabled={busy} onClick={newRole} className="h-8 rounded-lg px-3 text-[13px] font-medium">
+                  Add role
+                </Button>
+              )}
+            </div>
             <Table className="ztable">
               <TableHeader>
                 <TableRow className="border-(--ink-border) bg-(--linen)">
@@ -385,7 +435,9 @@ export function UnitsRolesTab({
                             canDelete
                             active={active}
                             onDeactivate={() => {
-                              void updateRoleAction(role.id, { active: !active }).then(() => router.refresh());
+                              void updateRoleAction(role.id, { active: !active })
+                                .then(() => router.refresh())
+                                .catch(fail);
                             }}
                             onDelete={() => setConfirmDelete({ kind: "roles", id: role.id, name: role.name })}
                             onDeleteDisabled={staffCount > 0}
@@ -402,6 +454,7 @@ export function UnitsRolesTab({
                 })}
               </TableBody>
             </Table>
+            </>
           )}
         </div>
       )}

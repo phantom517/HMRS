@@ -32,7 +32,7 @@ export default async function LeaveOffDaysPage() {
       <Sidebar currentUser={currentUser} activeConflictsCount={sidebarCounts.activeConflictsCount} />
       <div className="app-shell" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <Header currentUser={currentUser} employees={employeesData.employees} shiftTypes={shiftTypes} />
-        <main className="zpage-main" style={{ maxWidth: 1200, width: "100%", margin: "0 auto", padding: "36px 36px 96px", flex: 1 }}>
+        <main className="zpage-main">
           <LeaveOffDaysClient
             currentUser={currentUser}
             employees={employeesData.employees}

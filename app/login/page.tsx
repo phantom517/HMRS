@@ -282,7 +282,7 @@ export default function LoginPage() {
                   style={{
                     border: "none",
                     background: "none",
-                    color: "var(--teal-primary, #00685f)",
+                    color: "var(--ink)",
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: "pointer",

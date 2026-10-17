@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { AuthenticatedUser } from "@/lib/auth/session";
-import * as assistantStore from "@/components/assistant/assistantStore";
 
 interface HeaderProps {
   currentUser: AuthenticatedUser;
@@ -46,20 +46,7 @@ export function Header({ currentUser }: HeaderProps) {
         : "View Only";
 
   return (
-    <header
-      className="app-topbar"
-      style={{
-        height: 60,
-        margin: "16px 32px 0 32px",
-        background: "var(--paper)",
-        border: "1px solid var(--ink-border)",
-        borderRadius: 12,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 24px",
-      }}
-    >
+    <header className="app-topbar">
       {/* Left: Department breadcrumb / identifier */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span
@@ -84,10 +71,10 @@ export function Header({ currentUser }: HeaderProps) {
         </span>
       </div>
 
-      {/* Right: Gemini Assistant + user button & menu */}
+      {/* Right: Assistant link + user button & menu */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <button
-          onClick={() => assistantStore.toggle()}
+        <Link
+          href="/assistant"
           style={{
             display: "flex",
             alignItems: "center",
@@ -102,34 +89,22 @@ export function Header({ currentUser }: HeaderProps) {
             color: "var(--ink)",
             fontFamily: "inherit",
             fontWeight: 500,
+            textDecoration: "none",
             transition: "all 150ms ease",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = "var(--paper)";
-            e.currentTarget.style.borderColor = "var(--teal-primary, #00685f)";
+            e.currentTarget.style.borderColor = "var(--ink)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = "var(--linen)";
             e.currentTarget.style.borderColor = "var(--ink-border)";
           }}
-          title="Open Gemini Context-Aware Assistant"
+          title="Open the Assistant"
         >
-          <Sparkles style={{ width: 15, height: 15, strokeWidth: 1.7, color: "var(--teal-primary, #00685f)" }} />
-          <span>Gemini Assistant</span>
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 600,
-              padding: "1px 6px",
-              borderRadius: 6,
-              background: "var(--paper)",
-              border: "1px solid var(--ink-border)",
-              color: "var(--teal-primary, #00685f)",
-            }}
-          >
-            AI
-          </span>
-        </button>
+          <Sparkles style={{ width: 15, height: 15, strokeWidth: 1.7, color: "var(--ink)" }} />
+          <span>Assistant</span>
+        </Link>
         <div ref={menuRef} style={{ position: "relative" }}>
         {/* Role is shown once, inside the menu — never as a chip in the bar itself */}
         <button

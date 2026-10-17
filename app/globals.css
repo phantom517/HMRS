@@ -1,644 +1,962 @@
+/* Font import must come BEFORE any real rules (tailwindcss expands into rules) */
+@import url("https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..700&display=swap");
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..700&display=swap');
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Kept so shadcn `dark:` utilities only apply under an explicit .dark class,
+   never via the OS prefers-color-scheme. Zelt is light-only. */
 @custom-variant dark (&:is(.dark *));
 
 /* ─── Zelt Design Tokens ─── */
 :root {
-  --ink: #121718;            /* Primary text, icons, hairline borders */
-  --paper: #ffffff;          /* Highest-lift surfaces (cards, tables, top bar) */
-  --linen: #f6f3ef;          /* Soft inset surfaces, table header rows, hover rows */
-  --parchment: #e4e0dd;      /* Page canvas (body background) */
-  --graphite: #2f2f2f;       /* Dark panel (contrast band) */
-  --slate: #444444;          /* Muted secondary action fills */
-  --honey: #ffcd6d;          /* Primary action fill: EXACTLY ONE element per viewport */
-  --honey-hover: #f5c25d;    /* Subtle darken on hover */
-  --apricot: #ffe2aa;        /* Soft emphasis: warning/pending tags, notification strip */
-  --critical-bg: #f3d6d0;    /* ONLY permitted non-amber hue: background */
-  --critical-text: #9b2c1f;  /* ONLY permitted non-amber hue: text */
+    --ink: #121718; /* Primary text, icons, hairline borders */
+    --paper: #ffffff; /* Highest-lift surfaces (cards, tables, top bar) */
+    --linen: #f6f3ef; /* Soft inset surfaces, table header rows, hover rows */
+    --parchment: #e4e0dd; /* Page canvas (body background) */
+    --graphite: #2f2f2f; /* Dark panel (contrast band) */
+    --slate: #444444; /* Muted secondary action fills */
+    --honey: #ffcd6d; /* Primary action fill: EXACTLY ONE element per viewport */
+    --honey-hover: #f5c25d; /* Subtle darken on hover */
+    --apricot: #ffe2aa; /* Soft emphasis: warning/pending tags, notification strip */
+    --critical-bg: #f3d6d0; /* ONLY permitted non-amber hue: background */
+    --critical-text: #9b2c1f; /* ONLY permitted non-amber hue: text */
 
-  /* Ink Opacity Levels */
-  --ink-secondary: rgba(18, 23, 24, 0.65); /* Secondary text */
-  --ink-tertiary: rgba(18, 23, 24, 0.45);  /* Tertiary text / column headers */
-  --ink-border: rgba(18, 23, 24, 0.08);    /* 8% hairline border for cards, nav, tables */
-  --ink-border-strong: rgba(18, 23, 24, 0.12); /* 12% hairline border for ghost buttons */
-  --ink-border-row: rgba(18, 23, 24, 0.06);/* 6% faint row border */--background: oklch(1 0 0);--foreground: oklch(0.145 0 0);--card: oklch(1 0 0);--card-foreground: oklch(0.145 0 0);--popover: oklch(1 0 0);--popover-foreground: oklch(0.145 0 0);--primary: oklch(0.205 0 0);--primary-foreground: oklch(0.985 0 0);--secondary: oklch(0.97 0 0);--secondary-foreground: oklch(0.205 0 0);--muted: oklch(0.97 0 0);--muted-foreground: oklch(0.556 0 0);--accent: oklch(0.97 0 0);--accent-foreground: oklch(0.205 0 0);--destructive: oklch(0.577 0.245 27.325);--border: oklch(0.922 0 0);--input: oklch(0.922 0 0);--ring: oklch(0.708 0 0);--chart-1: oklch(0.87 0 0);--chart-2: oklch(0.556 0 0);--chart-3: oklch(0.439 0 0);--chart-4: oklch(0.371 0 0);--chart-5: oklch(0.269 0 0);--radius: 0.625rem;--sidebar: oklch(0.985 0 0);--sidebar-foreground: oklch(0.145 0 0);--sidebar-primary: oklch(0.205 0 0);--sidebar-primary-foreground: oklch(0.985 0 0);--sidebar-accent: oklch(0.97 0 0);--sidebar-accent-foreground: oklch(0.205 0 0);--sidebar-border: oklch(0.922 0 0);--sidebar-ring: oklch(0.708 0 0);
+    /* Ink Opacity Levels */
+    --ink-secondary: rgba(18, 23, 24, 0.65); /* Secondary text */
+    --ink-tertiary: rgba(18, 23, 24, 0.45); /* Tertiary text / column headers */
+    --ink-border: rgba(
+        18,
+        23,
+        24,
+        0.08
+    ); /* 8% hairline border for cards, nav, tables */
+    --ink-border-strong: rgba(
+        18,
+        23,
+        24,
+        0.12
+    ); /* 12% hairline border for ghost buttons */
+    --ink-border-row: rgba(18, 23, 24, 0.06); /* 6% faint row border */
 }
 
 /* ─── Base Reset & Strict Zelt Rules ─── */
-/* ROOT CAUSE FIX: this reset lived unlayered, so Tailwind v4 layer utilities
-   (p-6, gap-4, px-4…) lost to it and everything rendered squished with all
-   gaps and paddings zeroed. Tailwind's preflight already handles box-sizing
-   and margin removal — the reset now lives in @layer base WITHOUT the
-   margin/padding zeroes, keeping only the Zelt no-shadow rule. */
+/* Lives in @layer base so Tailwind v4 utilities (p-6, gap-4, px-4…) can win.
+   Only the Zelt no-shadow rule is kept; preflight handles box-sizing/margins. */
 @layer base {
-  *, *::before, *::after {
-    box-sizing: border-box;
-    box-shadow: none !important; /* Strict Zelt rule: No shadows anywhere */
-    text-shadow: none !important;
-  }
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+        box-shadow: none !important; /* Strict Zelt rule: No shadows anywhere */
+        text-shadow: none !important;
+    }
 }
 
 html {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-feature-settings: 'ss01' 1, 'cv11' 1, 'tnum' 1;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background: var(--parchment);
-  color: var(--ink);
+    font-family:
+        "Inter",
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        sans-serif;
+    font-feature-settings:
+        "ss01" 1,
+        "cv11" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--parchment);
+    color: var(--ink);
 }
 
 body {
-  background: var(--parchment);
-  color: var(--ink);
-  font-size: 16px;
-  line-height: 1.4;
-  min-height: 100vh;
+    background: var(--parchment);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.4;
+    min-height: 100vh;
 }
 
 /* ─── Focus Ring ─── */
+/* No !important: lets component-specific rules (e.g. .cell-btn:focus-visible)
+   override offset/radius as intended. */
 :focus-visible {
-  outline: 2px solid var(--ink) !important;
-  outline-offset: 2px !important;
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+}
+
+/* ─── Loading spinner ─── */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ─── Scrollbar ─── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+    width: 6px;
+    height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+    background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(18, 23, 24, 0.12);
-  border-radius: 3px;
+    background: rgba(18, 23, 24, 0.12);
+    border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(18, 23, 24, 0.22);
+    background: rgba(18, 23, 24, 0.22);
 }
 
 /* ─── Card / Surface ─── */
 .zelt-surface {
-  background: var(--paper);
-  border: 1px solid var(--ink-border);
-  border-radius: 12px;
+    background: var(--paper);
+    border: 1px solid var(--ink-border);
+    border-radius: 12px;
 }
 
 .zelt-card {
-  background: var(--paper);
-  border: 1px solid var(--ink-border);
-  border-radius: 12px;
-  padding: 24px;
+    background: var(--paper);
+    border: 1px solid var(--ink-border);
+    border-radius: 12px;
+    padding: 24px;
 }
 
 /* ─── Tags ─── */
 .ztag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-  white-space: nowrap;
-  letter-spacing: -0.03px;
-  border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+    letter-spacing: -0.03px;
+    border: none;
 }
 .ztag-critical {
-  background: var(--critical-bg) !important;
-  color: var(--critical-text) !important;
+    background: var(--critical-bg) !important;
+    color: var(--critical-text) !important;
 }
 .ztag-warning {
-  background: var(--apricot) !important;
-  color: var(--ink) !important;
+    background: var(--apricot) !important;
+    color: var(--ink) !important;
 }
-.ztag-ok, .ztag-neutral {
-  background: var(--linen) !important;
-  color: var(--ink) !important;
+.ztag-ok,
+.ztag-neutral {
+    background: var(--linen) !important;
+    color: var(--ink) !important;
 }
 
 /* ─── Buttons ─── */
 .zbtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border-radius: 12px;
-  font-family: inherit;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
-  text-decoration: none;
-  white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 12px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+        background-color 150ms ease,
+        color 150ms ease,
+        border-color 150ms ease;
+    text-decoration: none;
+    white-space: nowrap;
 }
 
 /* Primary Button: Honey fill, ink text, 16px/500, 12px radius, no border, no shadow, 12px 24px padding. EXACTLY ONE per viewport */
 .zbtn-primary {
-  background: var(--honey) !important;
-  color: var(--ink) !important;
-  font-size: 16px;
-  padding: 12px 24px;
-  border: none !important;
-  line-height: 1.4;
+    background: var(--honey) !important;
+    color: var(--ink) !important;
+    font-size: 16px;
+    padding: 12px 24px;
+    border: none !important;
+    line-height: 1.4;
 }
 .zbtn-primary:hover {
-  background: var(--honey-hover) !important;
+    background: var(--honey-hover) !important;
 }
 
 /* Secondary Ghost Button: Transparent, 1px ink border, ink text 15-16px/500, 12px radius, 10px 16px padding. Hover: parchment fill */
 .zbtn-secondary {
-  background: transparent;
-  color: var(--ink);
-  font-size: 15px;
-  padding: 10px 16px;
-  border: 1px solid var(--ink-border-strong);
-  line-height: 1.4;
+    background: transparent;
+    color: var(--ink);
+    font-size: 15px;
+    padding: 10px 16px;
+    border: 1px solid var(--ink-border-strong);
+    line-height: 1.4;
 }
 .zbtn-secondary:hover {
-  background: var(--parchment);
+    background: var(--parchment);
 }
 
 /* Text-Only Action: ink text, underline on hover. Not blue. */
 .zbtn-text {
-  background: transparent;
-  color: var(--ink);
-  border: none;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 0;
-  cursor: pointer;
-  line-height: 1.4;
-  text-decoration: none;
+    background: transparent;
+    color: var(--ink);
+    border: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0;
+    cursor: pointer;
+    line-height: 1.4;
+    text-decoration: none;
 }
 .zbtn-text:hover {
-  text-decoration: underline;
+    text-decoration: underline;
 }
 
 /* ─── Tables ─── */
 .ztable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 15px;
-  line-height: 1.4;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+    line-height: 1.4;
 }
 .ztable th {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink-tertiary);
-  text-transform: none;
-  letter-spacing: normal;
-  padding: 14px 20px;
-  text-align: left;
-  border-bottom: 1px solid var(--ink-border);
-  background: var(--paper);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-tertiary);
+    text-transform: none;
+    letter-spacing: normal;
+    padding: 14px 20px;
+    text-align: left;
+    border-bottom: 1px solid var(--ink-border);
+    background: var(--paper);
 }
 .ztable td {
-  padding: 0 20px;
-  height: 56px;
-  vertical-align: middle;
-  border-bottom: 1px solid var(--ink-border-row);
-  color: var(--ink);
-  font-weight: 400;
+    padding: 0 20px;
+    height: 56px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--ink-border-row);
+    color: var(--ink);
+    font-weight: 400;
 }
 .ztable tbody tr {
-  transition: background-color 150ms ease;
+    transition: background-color 150ms ease;
 }
 .ztable tbody tr:hover td {
-  background: var(--linen);
+    background: var(--linen);
 }
 .ztable tbody tr:last-child td {
-  border-bottom: none;
+    border-bottom: none;
 }
 .ztable .num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 .ztable tfoot td {
-  border-top: 1px solid var(--ink-border);
-  border-bottom: none;
-  font-weight: 500;
-  background: var(--paper);
+    border-top: 1px solid var(--ink-border);
+    border-bottom: none;
+    font-weight: 500;
+    background: var(--paper);
 }
 
 /* ─── Responsive app shell ─── */
-/* Desktop: fixed 220px sidebar gutter. Mobile: full width, sidebar becomes a drawer. */
+/* ONE gutter, ONE max-width. The top bar and the page body both centre
+   themselves inside the same column, so their left/right edges always line
+   up. Pages override --page-max when they need more room (roster: 1320px). */
 .app-shell {
-  padding-left: 220px;
+    --page-max: 1200px;
+    --page-gutter: 32px;
+    padding-left: 220px;
+}
+
+/* Roster needs the wider column. */
+.app-shell.is-wide {
+    --page-max: 1320px;
 }
 
 @media (max-width: 859px) {
-  .app-shell {
-    padding-left: 0;
-  }
+    .app-shell {
+        padding-left: 0;
+        --page-gutter: 16px;
+    }
 }
 
-/* Assistant docked (B4): at ≥1280px the open assistant pushes the page
-   content instead of covering it. The panel itself is fixed on the right. */
-@media (min-width: 1280px) {
-  body.assistant-open .app-shell {
-    padding-right: 400px;
-  }
-}
-
-/* Main content gutter shrinks on small screens */
 main {
-  min-width: 0;
+    min-width: 0;
 }
 
-@media (max-width: 859px) {
-  .zpage-main {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-  }
-}
-
-/* Top bar: tighter margins on mobile */
+/* Top bar: sibling of .zpage-main, sharing its column. */
 .app-topbar {
-  margin: 16px 32px 0 32px;
+    box-sizing: border-box;
+    width: calc(100% - (var(--page-gutter) * 2));
+    max-width: var(--page-max);
+    margin: 16px auto 0 auto;
+    height: 56px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    background: var(--paper);
+    border: 1px solid var(--ink-border);
+    border-radius: 12px;
+}
+
+.zpage-main {
+    box-sizing: border-box;
+    width: calc(100% - (var(--page-gutter) * 2));
+    max-width: var(--page-max);
+    margin: 0 auto;
+    padding: 32px 0 96px 0;
+    flex: 1;
 }
 
 @media (max-width: 859px) {
-  .app-topbar {
-    margin: 12px 12px 0 12px;
-    padding: 0 14px;
-  }
+    .app-topbar {
+        height: 52px;
+        padding: 0 14px;
+        margin-top: 12px;
+    }
+    .zpage-main {
+        padding-top: 20px;
+        padding-bottom: 72px;
+    }
 }
 
 /* Hamburger: desktop hidden, mobile visible */
 .sidebar-toggle {
-  display: none;
+    display: none;
 }
 
 @media (max-width: 859px) {
-  .sidebar-toggle {
-    display: inline-flex;
-  }
+    .sidebar-toggle {
+        display: inline-flex;
+    }
 }
 
 /* Sidebar drawer on mobile: off-canvas by default, slides in when open */
 .app-sidebar {
-  width: 220px;
+    width: 220px;
 }
 
 @media (max-width: 859px) {
-  .app-sidebar {
-    transform: translateX(-100%);
-    transition: transform 180ms ease;
-    background: var(--paper);
-    box-shadow: none;
-    z-index: 60;
-  }
-  .app-sidebar.is-open {
-    transform: translateX(0);
-    border-right: 1px solid var(--ink-border);
-  }
+    .app-sidebar {
+        transform: translateX(-100%);
+        transition: transform 180ms ease;
+        background: var(--paper);
+        box-shadow: none;
+        z-index: 60;
+    }
+    .app-sidebar.is-open {
+        transform: translateX(0);
+        border-right: 1px solid var(--ink-border);
+    }
 }
 
 /* Scrim behind the mobile drawer */
 .sidebar-scrim {
-  display: none;
+    display: none;
 }
 
 @media (max-width: 859px) {
-  .sidebar-scrim.is-open {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(18, 23, 24, 0.4);
-    z-index: 50;
-  }
+    .sidebar-scrim.is-open {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(18, 23, 24, 0.4);
+        z-index: 50;
+    }
 }
 
 /* Reports panel grid collapses to a single column on narrow screens */
 @media (max-width: 859px) {
-  .reports-panels {
-    grid-template-columns: 1fr !important;
-  }
-  .roster-header-container {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 14px !important;
-  }
-  .roster-header-container .zbtn-primary {
-    width: 100% !important;
-    justify-content: center !important;
-  }
-  .roster-toolbar-container {
-    gap: 8px !important;
-  }
-  .roster-toolbar-item-full {
-    width: 100% !important;
-  }
-  .roster-toolbar-item-half {
-    width: calc(50% - 4px) !important;
-  }
-  .mobile-day-selector {
-    display: flex !important;
-    overflow-x: auto;
-    padding: 4px 0 8px;
-    gap: 6px;
-    -webkit-overflow-scrolling: touch;
-  }
-  .ztable-roster-wrap {
-    max-height: calc(100vh - 240px) !important;
-    -webkit-overflow-scrolling: touch;
-  }
-  .roster-drawer-surface {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    border-radius: 16px 16px 0 0 !important;
-  }
+    .reports-panels {
+        grid-template-columns: 1fr !important;
+    }
+    .roster-header-container {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 14px !important;
+    }
+    .roster-header-container .zbtn-primary {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+    .roster-toolbar-container {
+        gap: 8px !important;
+    }
+    .roster-toolbar-item-full {
+        width: 100% !important;
+    }
+    .roster-toolbar-item-half {
+        width: calc(50% - 4px) !important;
+    }
+    .mobile-day-selector {
+        display: flex !important;
+        overflow-x: auto;
+        padding: 4px 0 8px;
+        gap: 6px;
+        -webkit-overflow-scrolling: touch;
+    }
+    .ztable-roster-wrap {
+        max-height: calc(100vh - 240px) !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    .roster-drawer-surface {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        border-radius: 16px 16px 0 0 !important;
+    }
 }
 
 /* ─── Roster grid helpers ─── */
 .roster-group-row:hover td {
-  background: var(--linen) !important;
+    background: var(--linen) !important;
 }
 
 /* Empty-slot plus: revealed on hover or keyboard focus only */
 .cell-add {
-  opacity: 0;
-  transition: opacity 120ms ease;
+    opacity: 0;
+    transition: opacity 120ms ease;
 }
 td:hover .cell-add,
 .cell-btn:hover .cell-add,
 .cell-btn:focus-visible .cell-add,
 .cell-add:focus-visible {
-  opacity: 1;
+    opacity: 1;
 }
 
-/* Visible 2px ink focus ring for every roster cell */
+/* Visible 2px ink focus ring for every roster cell (inset so it isn't clipped) */
 .cell-btn:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: -2px;
-  border-radius: 8px;
+    outline: 2px solid var(--ink);
+    outline-offset: -2px;
+    border-radius: 8px;
 }
 
 /* Sticky roster cells always need opaque backgrounds above the scroll pane */
 .ztable-roster thead th {
-  position: sticky;
-  top: 0;
-  z-index: 4;
-  background: var(--paper);
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    background: var(--paper);
 }
 .ztable-roster tfoot td {
-  position: sticky;
-  bottom: 0;
-  z-index: 4;
-  background: var(--linen);
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    background: var(--linen);
 }
 
 /* Summary row (planned/actual comparison) */
 .ztable-summary {
-  font-variant-numeric: tabular-nums;
+    font-variant-numeric: tabular-nums;
 }
 
 /* ─── Avatar Initials Circle ─── */
 .zavatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  font-size: 11px;
-  font-weight: 500;
-  background: var(--linen);
-  color: var(--ink);
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--linen);
+    color: var(--ink);
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ─── Assistant chat page ─── */
+/* The card is solid --paper on the --parchment page; nothing is layered over
+   it and no opacity is applied, so it lifts off the background on its own. */
+.zchat-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--paper);
+    border: 1px solid var(--ink-border);
+    border-radius: 12px;
+    overflow: hidden;
+    /* Header (56) + its top margin (16) + page top padding (32) + page bottom
+       padding (32) + the card's own breathing room. Keeps the page itself
+       unscrollable so the card edge never meets the window scrollbar. */
+    height: calc(100vh - 152px);
+    min-height: 420px;
+}
+
+/* Only the message list scrolls — the thin 6px scrollbar from the global rule. */
+.zchat-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 16px 0 8px 0;
+}
+
+/* Fade the top and bottom edges of the scroll area so text dissolves instead
+   of being sliced by the container edge. */
+.zchat-fade {
+    position: relative;
+}
+.zchat-fade::before,
+.zchat-fade::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 24px;
+    pointer-events: none;
+    z-index: 2;
+}
+.zchat-fade::before {
+    top: 0;
+    background: linear-gradient(to bottom, var(--paper), rgba(255, 255, 255, 0));
+}
+.zchat-fade::after {
+    bottom: 0;
+    background: linear-gradient(to top, var(--paper), rgba(255, 255, 255, 0));
+}
+
+/* Conversation column: centred, ~760px, so the card never has a dead right half. */
+.zchat-column {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Assistant avatar */
+.zavatar-lg {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+}
+
+/* Timestamp: quiet, revealed on hover of the message row. */
+.zchat-stamp {
+    opacity: 0;
+    transition: opacity 150ms ease;
+    font-size: 11.5px;
+    color: var(--ink-tertiary);
+    white-space: nowrap;
+}
+.zchat-row:hover .zchat-stamp,
+.zchat-row:focus-within .zchat-stamp {
+    opacity: 1;
+}
+
+/* Typing indicator */
+.zchat-typing {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.zchat-typing span {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--ink-tertiary);
+    animation: zchat-blink 1.2s infinite ease-in-out;
+}
+.zchat-typing span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+.zchat-typing span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+@keyframes zchat-blink {
+    0%,
+    80%,
+    100% {
+        opacity: 0.25;
+    }
+    40% {
+        opacity: 1;
+    }
+}
+
+/* ─── Assistant markdown blocks ─── */
+.zmd {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.6;
+    overflow-wrap: break-word;
+}
+.zmd > *:first-child {
+    margin-top: 0;
+}
+.zmd h1,
+.zmd h2,
+.zmd h3,
+.zmd h4 {
+    font-weight: 500;
+    letter-spacing: -0.2px;
+    color: var(--ink);
+    margin: 0;
+}
+.zmd h2 {
+    font-size: 17px;
+}
+.zmd h3 {
+    font-size: 15.5px;
+}
+.zmd h4 {
+    font-size: 14.5px;
+}
+.zmd p {
+    margin: 0;
+}
+.zmd strong {
+    font-weight: 500;
+}
+.zmd em {
+    font-style: italic;
+}
+/* Hanging indent: the marker hangs in the gutter, wrapped lines line up with
+   the text rather than under the bullet or the number. */
+.zmd ul,
+.zmd ol {
+    margin: 0;
+    padding-left: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.zmd li {
+    padding-left: 2px;
+}
+.zmd li::marker {
+    color: var(--ink-tertiary);
+}
+.zmd li > ul,
+.zmd li > ol {
+    margin-top: 6px;
+}
+.zmd code {
+    background: var(--linen);
+    border: 1px solid var(--ink-border);
+    border-radius: 6px;
+    padding: 1px 5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+}
+.zmd pre {
+    background: var(--linen);
+    border: 1px solid var(--ink-border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    margin: 0;
+}
+.zmd pre code {
+    background: none;
+    border: none;
+    padding: 0;
+}
+.zmd hr {
+    border: none;
+    border-top: 1px solid var(--ink-border);
+    margin: 4px 0;
+}
+.zmd a {
+    color: var(--ink);
+    text-decoration: underline;
+}
+.zmd blockquote {
+    margin: 0;
+    padding-left: 14px;
+    border-left: 2px solid var(--ink-border-strong);
+    color: var(--ink-secondary);
+}
+/* Markdown tables: the one place tabular figures are wanted. */
+.zmd-table {
+    overflow-x: auto;
+    border: 1px solid var(--ink-border);
+    border-radius: 12px;
+}
+.zmd-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+.zmd-table th {
+    text-align: left;
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--ink-tertiary);
+    background: var(--linen);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--ink-border);
+    white-space: nowrap;
+}
+.zmd-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--ink-border-row);
+    color: var(--ink);
+}
+.zmd-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Diff rows inside a proposed-change card */
+.zchat-diff-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13.5px;
+}
+.zchat-diff-removed {
+    background: var(--critical-bg);
+    color: var(--critical-text);
+}
+.zchat-diff-added {
+    background: var(--apricot);
+    color: var(--ink);
+}
+/* Removed text reads as struck through, not as an error state. */
+.zchat-diff-removed s {
+    text-decoration-thickness: 1px;
+}
+
+/* Message list is announced politely to screen readers. */
+.zchat-log {
+    display: flex;
+    flex-direction: column;
+}
+
+@media (max-width: 859px) {
+    .zchat-card {
+        /* Card owns the viewport height on mobile; the composer sits above the
+           home indicator via safe-area padding. */
+        height: calc(100dvh - 128px);
+        min-height: 0;
+    }
+    .zchat-column {
+        padding: 0 16px;
+        gap: 16px;
+    }
+    .zchat-scroll {
+        padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    }
+    .zchat-chips {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+    }
+    .zchat-chips > * {
+        flex-shrink: 0;
+    }
 }
 
 /* ─── Global Material-to-Zelt Theme Overrides ─── */
 /* Ensures all legacy material container classes across all pages adopt Zelt tokens */
 .bg-surface-container-lowest {
-  background-color: var(--paper) !important;
+    background-color: var(--paper) !important;
 }
 .bg-surface-container-low {
-  background-color: var(--linen) !important;
+    background-color: var(--linen) !important;
 }
 .bg-surface-container {
-  background-color: var(--linen) !important;
+    background-color: var(--linen) !important;
 }
 .bg-surface-container-high {
-  background-color: var(--parchment) !important;
+    background-color: var(--parchment) !important;
 }
 .bg-surface-container-highest {
-  background-color: var(--parchment) !important;
+    background-color: var(--parchment) !important;
 }
 .bg-background {
-  background-color: var(--parchment) !important;
+    background-color: var(--parchment) !important;
 }
 
 .border-surface-container,
 .border-outline,
 .border-outline-variant {
-  border-color: var(--ink-border) !important;
-  border-style: solid !important;
+    border-color: var(--ink-border) !important;
+    border-style: solid !important;
 }
 
 .text-on-surface {
-  color: var(--ink) !important;
+    color: var(--ink) !important;
 }
 .text-on-surface-variant {
-  color: var(--ink-secondary) !important;
+    color: var(--ink-secondary) !important;
 }
 .text-outline,
 .text-outline-variant {
-  color: var(--ink-tertiary) !important;
+    color: var(--ink-tertiary) !important;
 }
 
 /* Error / Critical overrides */
 .bg-error-container {
-  background-color: var(--critical-bg) !important;
+    background-color: var(--critical-bg) !important;
 }
 .text-error,
 .text-on-error-container {
-  color: var(--critical-text) !important;
+    color: var(--critical-text) !important;
 }
 .border-error {
-  border-color: var(--critical-bg) !important;
+    border-color: var(--critical-bg) !important;
 }
 
 /* Primary & secondary overrides */
 .bg-primary-fixed,
 .bg-secondary-fixed,
 .bg-tertiary-fixed {
-  background-color: var(--linen) !important;
+    background-color: var(--linen) !important;
 }
 .text-on-primary-fixed,
 .text-on-secondary-fixed,
 .text-on-tertiary-fixed {
-  color: var(--ink) !important;
+    color: var(--ink) !important;
 }
 .text-primary {
-  color: var(--ink) !important;
+    color: var(--ink) !important;
 }
 .text-secondary,
 .text-tertiary {
-  color: var(--ink-secondary) !important;
+    color: var(--ink-secondary) !important;
 }
 
-/* Rings & dashed borders removed */
+/* Rings removed (shadow only; never touch outline so focus stays visible) */
 [class*="ring-"] {
-  box-shadow: none !important;
-  outline: none !important;
+    box-shadow: none !important;
 }
 .border-dashed {
-  border-style: solid !important;
-  border-color: var(--ink-border) !important;
+    border-style: solid !important;
+    border-color: var(--ink-border) !important;
 }
 
 /* Radii normalized to Zelt 12px */
 .rounded-xl,
 .rounded-2xl,
 .rounded-lg {
-  border-radius: 12px !important;
+    border-radius: 12px !important;
 }
 
 /* Force tabular numbers on all tables */
-table, td, th {
-  font-variant-numeric: tabular-nums !important;
+table,
+td,
+th {
+    font-variant-numeric: tabular-nums !important;
 }
 
 /* Eliminate harsh vertical column borders in table bodies */
 table td {
-  border-right: none !important;
-  border-left: none !important;
+    border-right: none !important;
+    border-left: none !important;
 }
 table th {
-  border-right: none !important;
-  border-left: none !important;
-  text-transform: none !important;
-  font-weight: 500 !important;
+    border-right: none !important;
+    border-left: none !important;
+    text-transform: none !important;
+    font-weight: 500 !important;
 }
 
 /* shadcn semantic tokens mapped onto Zelt design tokens */
 :root {
-  --background: var(--parchment);
-  --foreground: var(--ink);
-  --card: var(--paper);
-  --card-foreground: var(--ink);
-  --popover: var(--paper);
-  --popover-foreground: var(--ink);
-  --primary: var(--honey);
-  --primary-foreground: var(--ink);
-  --secondary: var(--linen);
-  --secondary-foreground: var(--ink);
-  --muted: var(--linen);
-  --muted-foreground: var(--ink-secondary);
-  --accent: var(--linen);
-  --accent-foreground: var(--ink);
-  --destructive: var(--critical-text);
-  --destructive-foreground: #ffffff;
-  --border: var(--ink-border);
-  --input: var(--ink-border-strong);
-  --ring: var(--ink);
-  --chart-1: var(--ink);
-  --chart-2: var(--ink-secondary);
-  --chart-3: var(--ink-tertiary);
-  --chart-4: var(--honey);
-  --chart-5: var(--critical-text);
-  --radius: 0.75rem;
-  --sidebar: var(--paper);
-  --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--honey);
-  --sidebar-primary-foreground: var(--ink);
-  --sidebar-accent: var(--linen);
-  --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: var(--ink-border);
-  --sidebar-ring: var(--ink);
+    --background: var(--parchment);
+    --foreground: var(--ink);
+    --card: var(--paper);
+    --card-foreground: var(--ink);
+    --popover: var(--paper);
+    --popover-foreground: var(--ink);
+    --primary: var(--honey);
+    --primary-foreground: var(--ink);
+    --secondary: var(--linen);
+    --secondary-foreground: var(--ink);
+    --muted: var(--linen);
+    --muted-foreground: var(--ink-secondary);
+    --accent: var(--linen);
+    --accent-foreground: var(--ink);
+    --destructive: var(--critical-text);
+    --destructive-foreground: #ffffff;
+    --border: var(--ink-border);
+    --input: var(--ink-border-strong);
+    --ring: var(--ink);
+    --chart-1: var(--ink);
+    --chart-2: var(--ink-secondary);
+    --chart-3: var(--ink-tertiary);
+    --chart-4: var(--honey);
+    --chart-5: var(--critical-text);
+    --radius: 0.75rem;
+    --sidebar: var(--paper);
+    --sidebar-foreground: var(--ink);
+    --sidebar-primary: var(--honey);
+    --sidebar-primary-foreground: var(--ink);
+    --sidebar-accent: var(--linen);
+    --sidebar-accent-foreground: var(--ink);
+    --sidebar-border: var(--ink-border);
+    --sidebar-ring: var(--ink);
 }
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+    /* Real font stack (was a self-referencing var, which resolved to nothing) */
+    --font-sans:
+        "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, sans-serif;
+    --font-heading: var(--font-sans);
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
+/* The unused .dark token block was removed: Zelt is light-only, and it
+   introduced a blue --sidebar-primary that broke the amber-only rule. */
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
+    * {
+        @apply border-border outline-ring/50;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+    html {
+        @apply font-sans;
+    }
 }

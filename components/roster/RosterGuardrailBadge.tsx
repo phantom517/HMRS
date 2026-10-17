@@ -166,8 +166,8 @@ export function RosterGuardrailBadge({
           </>
         ) : (
           <>
-            <CheckCircle2 style={{ width: 15, height: 15, color: "#10b981", strokeWidth: 2 }} />
-            <span style={{ color: "#065f46", fontWeight: 600, fontSize: 12.5 }}>
+            <CheckCircle2 style={{ width: 15, height: 15, color: "var(--ink)", strokeWidth: 2 }} />
+            <span style={{ color: "var(--ink)", fontWeight: 600, fontSize: 12.5 }}>
               Roster Compliant · 0 Alerts
             </span>
           </>
@@ -226,7 +226,7 @@ export function RosterGuardrailBadge({
                     width: 36,
                     height: 36,
                     borderRadius: 10,
-                    background: totalAlerts > 0 ? "var(--critical-bg)" : "rgba(16, 185, 129, 0.12)",
+                    background: totalAlerts > 0 ? "var(--critical-bg)" : "var(--linen)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -236,7 +236,7 @@ export function RosterGuardrailBadge({
                   {totalAlerts > 0 ? (
                     <AlertTriangle style={{ width: 18, height: 18, color: "var(--critical-text)", strokeWidth: 1.75 }} />
                   ) : (
-                    <CheckCircle2 style={{ width: 18, height: 18, color: "#10b981", strokeWidth: 1.75 }} />
+                    <CheckCircle2 style={{ width: 18, height: 18, color: "var(--ink)", strokeWidth: 1.75 }} />
                   )}
                 </span>
                 <div>
@@ -371,13 +371,13 @@ export function RosterGuardrailBadge({
                       width: 48,
                       height: 48,
                       borderRadius: 12,
-                      background: "rgba(16, 185, 129, 0.1)",
+                      background: "var(--linen)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <CheckCircle2 style={{ width: 24, height: 24, color: "#10b981", strokeWidth: 1.75 }} />
+                    <CheckCircle2 style={{ width: 24, height: 24, color: "var(--ink)", strokeWidth: 1.75 }} />
                   </span>
                   <div>
                     <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)", margin: 0 }}>
@@ -457,7 +457,7 @@ export function RosterGuardrailBadge({
                             style={{
                               border: "none",
                               background: "none",
-                              color: "var(--teal-primary, #00685f)",
+                              color: "var(--ink)",
                               fontSize: 12.5,
                               fontWeight: 600,
                               cursor: "pointer",
@@ -542,7 +542,7 @@ export function RosterGuardrailBadge({
                             style={{
                               border: "none",
                               background: "none",
-                              color: "var(--teal-primary, #00685f)",
+                              color: "var(--ink)",
                               fontSize: 12.5,
                               fontWeight: 600,
                               cursor: "pointer",

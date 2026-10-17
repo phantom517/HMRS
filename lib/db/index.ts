@@ -25,6 +25,10 @@ class MemoryDatabase {
     return this.data.users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null;
   }
 
+  async getFirstViewerUser() {
+    return this.data.users.find((u) => u.role === "viewer") || null;
+  }
+
   async getAssistantPermissions(userId: string) {
     return this.data.permissions.find((p) => p.userId === userId) || null;
   }

@@ -213,13 +213,7 @@ export function DashboardClient({
   const hasNeedsAttention = !shortageResolved || !restViolationResolved || !leaveApproved;
 
   return (
-    <div
-      style={{
-        maxWidth: 1200,
-        margin: "0 auto",
-        padding: "36px 36px 80px",
-      }}
-    >
+    <div>
       {/* ── Page Title Block ── */}
       {/* Page title (department name): 32px / 500 / line-height 1.2 / letter-spacing -0.38px */}
       {/* Date and shift: 16px / 400, secondary ink, directly below the title (not crammed on one line with a divider) */}

@@ -58,6 +58,10 @@ export function SettingsClient(props: SettingsClientProps) {
   } = props;
   const router = useRouter();
   const isSuperuser = currentUser.role === "superuser";
+  // Dictionaries are server-gated on canEditEmployees (see allowedTabsFor and
+  // lib/actions/units), so the UI must match that — not superuser-only — or
+  // permitted assistant sessions get a read-only tab they cannot act on.
+  const canEditDictionaries = Boolean(currentUser.permissions?.canEditEmployees);
   const assistantUsers = users.filter((u) => u.role === "assistant");
 
   // URL-driven tabs. The single "Units & roles" trigger opens whichever of
@@ -84,11 +88,29 @@ export function SettingsClient(props: SettingsClientProps) {
 
   const dictTab = (activeTab === "roles" ? "roles" : "units") as DictTab;
 
+  if (tabs.length === 0) {
+    return (
+      <div className="flex w-full flex-col items-center gap-2 rounded-xl border border-(--ink-border) bg-(--paper) px-6 py-14 text-center">
+        <p className="text-[15px] font-medium text-(--ink)">No settings available for your account</p>
+        <p className="max-w-sm text-[13px] text-(--ink-secondary)">
+          This is a read-only view. Creating or editing units and roles requires
+          the Admin account, or an assistant account with the “Edit employees”
+          permission (set by Admin → Settings → Assistants).
+        </p>
+      </div>
+    );
+  }
+
+  // Highlight the dictionary trigger even when the URL drives ?tab=roles ...
+  const highlightId =
+    tabs.find((t) => t.id === activeTab)?.id ??
+    (activeTab === "roles" ? tabs.find((t) => t.id === "units")?.id : undefined) ??
+    tabs[0]?.id ??
+    "";
+
   return (
     <div className="flex w-full flex-col gap-6 pb-8">
-      {tabs.length > 0 && (
-        <SettingsTabs tabs={tabs} activeId={tabs.some((t) => t.id === activeTab) ? activeTab! : tabs[0].id} onTabChange={goTab} />
-      )}
+      <SettingsTabs tabs={tabs} activeId={highlightId} onTabChange={goTab} />
 
       {activeTab === "assistants" && (
         <AssistantsTab users={assistantUsers} permissions={permissions} canManage={isSuperuser} />
@@ -103,7 +125,7 @@ export function SettingsClient(props: SettingsClientProps) {
           roles={roles}
           unitStaffCounts={unitStaffCounts}
           roleStaffCounts={roleStaffCounts}
-          canEdit={isSuperuser}
+          canEdit={canEditDictionaries}
         />
       )}
       {activeTab === "audit" && (

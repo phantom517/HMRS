@@ -34,13 +34,9 @@ export default async function DutyRosterPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--parchment)" }}>
       <Sidebar currentUser={currentUser} activeConflictsCount={sidebarCounts.activeConflictsCount} />
-      <div className="app-shell" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div className="app-shell is-wide" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <Header currentUser={currentUser} employees={employeesData.employees} shiftTypes={shiftTypes} />
-        {/* Responsive padding: 16px on mobile, 32px on desktop */}
-        <main
-          className="zpage-main"
-          style={{ maxWidth: 1320, width: "100%", margin: "0 auto", flex: 1, paddingBottom: 96 }}
-        >
+        <main className="zpage-main">
           <DutyRosterClient
             currentUser={currentUser}
             employees={employeesData.employees}

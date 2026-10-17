@@ -39,6 +39,15 @@ export class DrizzleDatabase {
     return fallback[0] || null;
   }
 
+  async getFirstViewerUser() {
+    const rows = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.role, "viewer"))
+      .limit(1);
+    return rows[0] || null;
+  }
+
   async getAssistantPermissions(userId: string) {
     const rows = await this.db
       .select()
