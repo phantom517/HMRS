@@ -1,11 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import {
+  Zap,
+  ChevronDown,
+  CalendarPlus,
+  CalendarOff,
+  UserPlus,
+  Download,
+} from "lucide-react";
 import { AuthenticatedUser } from "@/lib/auth/session";
 import { ExportModal } from "@/components/modals/ExportModal";
 import { QuickAssignModal } from "@/components/modals/QuickAssignModal";
 import { RecordLeaveModal } from "@/components/modals/RecordLeaveModal";
+import {
+  EmployeeFormDialog,
+  type EmployeeFormData,
+  type EmployeeExceptionFields,
+} from "@/components/employees/EmployeeFormDialog";
+import { createEmployeeAction } from "@/lib/actions/employees";
 
 interface DashboardClientProps {
   currentUser: AuthenticatedUser;
@@ -123,21 +137,98 @@ export function DashboardClient({
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isQuickAssignOpen, setIsQuickAssignOpen] = useState(false);
   const [isRecordLeaveOpen, setIsRecordLeaveOpen] = useState(false);
+  const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
+  const quickActionsRef = useRef<HTMLDivElement>(null);
+
+  // Close Quick Actions menu on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        quickActionsRef.current &&
+        !quickActionsRef.current.contains(event.target as Node)
+      ) {
+        setIsQuickActionsOpen(false);
+      }
+    }
+    if (isQuickActionsOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isQuickActionsOpen]);
+
+  // Employee creation state for quick employee action
+  const [employeeFormData, setEmployeeFormData] = useState<EmployeeFormData>({
+    employeeId: `EMP-${Math.floor(100 + Math.random() * 900)}`,
+    fullName: "",
+    designation: "Staff Critical Care RN",
+    unit: "Trauma Bay 1-4 • Red Team",
+    phoneNumber: "+977-9801234567",
+    email: "",
+    dateJoined: new Date().toISOString().slice(0, 10),
+    credentials: "ACLS, BLS",
+  });
+  const [exceptionFields, setExceptionFields] = useState<EmployeeExceptionFields>({
+    maxHoursPerWeek: "",
+    canWorkNights: true,
+  });
+
+  const roleOptions = [
+    { name: "Staff Critical Care RN", description: "Registered Nurse - Trauma & Resus" },
+    { name: "Attending Trauma Physician (MD)", description: "Board Certified Emergency MD" },
+    { name: "Emergency Paramedic Tech", description: "Advanced Paramedic / Tech" },
+    { name: "Triage Charge Nurse", description: "ED Charge & Initial Assessment" },
+  ];
+
+  const unitOptions = [
+    { name: "Trauma Bay 1-4 • Red Team" },
+    { name: "Acute Resuscitation Pod A" },
+    { name: "FastTrack Ambulatory" },
+    { name: "ICU Overflow Pod B" },
+  ];
+
+  async function handleSaveNewEmployee() {
+    try {
+      if (!employeeFormData.fullName.trim() || !employeeFormData.email.trim()) {
+        alert("Please provide the employee's full name and email.");
+        return;
+      }
+      await createEmployeeAction({
+        employeeId: employeeFormData.employeeId,
+        fullName: employeeFormData.fullName,
+        designation: employeeFormData.designation,
+        unit: employeeFormData.unit,
+        phoneNumber: employeeFormData.phoneNumber,
+        email: employeeFormData.email,
+        dateJoined: employeeFormData.dateJoined,
+      });
+      setIsAddEmployeeOpen(false);
+      setEmployeeFormData({
+        employeeId: `EMP-${Math.floor(100 + Math.random() * 900)}`,
+        fullName: "",
+        designation: "Staff Critical Care RN",
+        unit: "Trauma Bay 1-4 • Red Team",
+        phoneNumber: "+977-9801234567",
+        email: "",
+        dateJoined: new Date().toISOString().slice(0, 10),
+        credentials: "ACLS, BLS",
+      });
+    } catch (err: any) {
+      alert(err.message || "Failed to create employee.");
+    }
+  }
 
   // View-only guard: hide mutating controls when the session lacks permissions
   const canEditEmployees = currentUser.permissions?.canEditEmployees;
   const canAssignShifts = currentUser.permissions?.canAssignShifts;
-  const canApproveLeave = currentUser.permissions?.canApproveLeave;
   const isViewer = currentUser.role === "viewer";
-
-  const [shortageResolved, setShortageResolved] = useState(false);
-  const [restViolationResolved, setRestViolationResolved] = useState(false);
-  const [leaveApproved, setLeaveApproved] = useState(false);
 
   const currentShift = getCurrentShift();
 
-  // All live numbers below are derived from real database records — no hardcoded values.
-  const todayStr = "2024-10-24"; // department cycle date (October timeline)
+  // Live department cycle date
+  const todayStr = "2024-10-24";
   const empMap = new Map(employees.map((e) => [e.id, e]));
   const shiftTypeMap = new Map(shiftTypes.map((s) => [s.id, s]));
 
@@ -210,179 +301,288 @@ export function DashboardClient({
     year: "numeric",
   });
 
-  const hasNeedsAttention = !shortageResolved || !restViolationResolved || !leaveApproved;
-
   return (
     <div>
-      {/* ── Page Title Block ── */}
-      {/* Page title (department name): 32px / 500 / line-height 1.2 / letter-spacing -0.38px */}
-      {/* Date and shift: 16px / 400, secondary ink, directly below the title (not crammed on one line with a divider) */}
-      <div style={{ marginBottom: 48 }}>
-        <h1
-          style={{
-            fontSize: 32,
-            fontWeight: 500,
-            color: "var(--ink)",
-            letterSpacing: "-0.38px",
-            lineHeight: 1.2,
-            margin: 0,
-          }}
-        >
-          Emergency Department
-        </h1>
-        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 3 }}>
-          <span
+      {/* ── Page Title Block with Quick Actions ── */}
+      <div
+        style={{
+          marginBottom: 40,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 20,
+        }}
+      >
+        <div>
+          <h1
             style={{
-              fontSize: 16,
-              fontWeight: 400,
-              color: "var(--ink-secondary)",
-              lineHeight: 1.4,
+              fontSize: 32,
+              fontWeight: 500,
+              color: "var(--ink)",
+              letterSpacing: "-0.38px",
+              lineHeight: 1.2,
+              margin: 0,
             }}
           >
-            {today}
-          </span>
-          <span
-            style={{
-              fontSize: 16,
-              fontWeight: 400,
-              color: "var(--ink-secondary)",
-              lineHeight: 1.4,
-            }}
-          >
-            {currentShift.label} &middot; {currentShift.time}
-          </span>
+            Emergency Department
+          </h1>
+          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 3 }}>
+            <span
+              style={{
+                fontSize: 16,
+                fontWeight: 400,
+                color: "var(--ink-secondary)",
+                lineHeight: 1.4,
+              }}
+            >
+              {today}
+            </span>
+            <span
+              style={{
+                fontSize: 16,
+                fontWeight: 400,
+                color: "var(--ink-secondary)",
+                lineHeight: 1.4,
+              }}
+            >
+              {currentShift.label} &middot; {currentShift.time}
+            </span>
+          </div>
         </div>
+
+        {/* ── QUICK ACTIONS MENU ── */}
+        {!isViewer && (
+          <div ref={quickActionsRef} style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
+              className="zbtn zbtn-secondary"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                height: 44,
+                padding: "0 18px",
+                borderRadius: 12,
+                background: isQuickActionsOpen ? "var(--parchment)" : "var(--paper)",
+                border: "1px solid var(--ink-border-strong)",
+                fontWeight: 500,
+              }}
+              aria-label="Quick Actions"
+            >
+              <Zap style={{ width: 16, height: 16, color: "var(--ink)" }} />
+              <span>Quick Actions</span>
+              <ChevronDown
+                style={{
+                  width: 15,
+                  height: 15,
+                  transform: isQuickActionsOpen ? "rotate(180deg)" : "none",
+                  transition: "transform 180ms ease",
+                }}
+              />
+            </button>
+
+            {isQuickActionsOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "calc(100% + 8px)",
+                  width: 270,
+                  background: "var(--paper)",
+                  backdropFilter: "blur(16px)",
+                  WebkitBackdropFilter: "blur(16px)",
+                  border: "1px solid var(--ink-border-strong)",
+                  borderRadius: 14,
+                  padding: 8,
+                  zIndex: 60,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                }}
+              >
+                <div
+                  style={{
+                    padding: "6px 12px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    color: "var(--ink-tertiary)",
+                  }}
+                >
+                  Administrator Actions
+                </div>
+
+                {canAssignShifts && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsQuickActionsOpen(false);
+                      setIsQuickAssignOpen(true);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      background: "transparent",
+                      border: "none",
+                      fontSize: 14,
+                      color: "var(--ink)",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "background-color 120ms ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "var(--linen)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent";
+                    }}
+                  >
+                    <CalendarPlus style={{ width: 16, height: 16, color: "var(--ink)" }} />
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <span style={{ fontWeight: 500 }}>Create Shift Assignment</span>
+                      <span style={{ fontSize: 12, color: "var(--ink-secondary)" }}>
+                        Assign clinician to duty slot
+                      </span>
+                    </div>
+                  </button>
+                )}
+
+                {canEditEmployees && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsQuickActionsOpen(false);
+                      setIsRecordLeaveOpen(true);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      background: "transparent",
+                      border: "none",
+                      fontSize: 14,
+                      color: "var(--ink)",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "background-color 120ms ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "var(--linen)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent";
+                    }}
+                  >
+                    <CalendarOff style={{ width: 16, height: 16, color: "var(--ink)" }} />
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <span style={{ fontWeight: 500 }}>Log Leave or Off-Day</span>
+                      <span style={{ fontSize: 12, color: "var(--ink-secondary)" }}>
+                        Statutory leave &amp; rest cycles
+                      </span>
+                    </div>
+                  </button>
+                )}
+
+                {canEditEmployees && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsQuickActionsOpen(false);
+                      setIsAddEmployeeOpen(true);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      background: "transparent",
+                      border: "none",
+                      fontSize: 14,
+                      color: "var(--ink)",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "background-color 120ms ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "var(--linen)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent";
+                    }}
+                  >
+                    <UserPlus style={{ width: 16, height: 16, color: "var(--ink)" }} />
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <span style={{ fontWeight: 500 }}>Add New Employee</span>
+                      <span style={{ fontSize: 12, color: "var(--ink-secondary)" }}>
+                        Register clinical staff profile
+                      </span>
+                    </div>
+                  </button>
+                )}
+
+                <div
+                  style={{
+                    height: 1,
+                    background: "var(--ink-border)",
+                    margin: "4px 0",
+                  }}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsQuickActionsOpen(false);
+                    setIsExportOpen(true);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    background: "transparent",
+                    border: "none",
+                    fontSize: 14,
+                    color: "var(--ink)",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "background-color 120ms ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--linen)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <Download style={{ width: 16, height: 16, color: "var(--ink-secondary)" }} />
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <span style={{ fontWeight: 500 }}>Export Audit Report</span>
+                    <span style={{ fontSize: 12, color: "var(--ink-secondary)" }}>
+                      PDF, Excel or CSV format
+                    </span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* ── SECTION 1: Needs Attention ── */}
-      {/* Render each item as its own row/card in paper with generous padding. Problem title at 16px/500, details as secondary text, action buttons right-aligned on the same row. Visible without scrolling. */}
-      {hasNeedsAttention && (
-        <section style={{ marginBottom: 48 }}>
-          <div style={{ marginBottom: 16 }}>
-            <SectionHeading>Needs attention</SectionHeading>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {/* Urgent Shortage Card */}
-            {!shortageResolved && (
-              <div
-                className="zelt-surface"
-                style={{
-                  padding: "20px 24px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 20,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 260 }}>
-                  <span style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", lineHeight: 1.3 }}>
-                    Night shift short 2 RNs
-                  </span>
-                  <span style={{ fontSize: 13, color: "var(--ink-secondary)", lineHeight: 1.4 }}>
-                    Trauma Bay &middot; tonight 19:00 &middot; Need 9 RNs, have 7 confirmed
-                  </span>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: "auto" }}>
-                  <ZTag variant="critical">2 short</ZTag>
-                  {!isViewer && (
-                    <button
-                      onClick={() => setShortageResolved(true)}
-                      className="zbtn zbtn-secondary"
-                    >
-                      Find cover
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Rest Interval Policy Card */}
-            {!restViolationResolved && (
-              <div
-                className="zelt-surface"
-                style={{
-                  padding: "20px 24px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 20,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 260 }}>
-                  <span style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", lineHeight: 1.3 }}>
-                    Rest interval violation
-                  </span>
-                  <span style={{ fontSize: 13, color: "var(--ink-secondary)", lineHeight: 1.4 }}>
-                    T. Gomez &middot; 8h gap (min {settings?.minRestHoursBetweenShifts || 11}h required) &middot; Back-to-back evening/day shift
-                  </span>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: "auto" }}>
-                  <ZTag variant="warning">Policy</ZTag>
-                  {!isViewer && (
-                    <button
-                      onClick={() => setRestViolationResolved(true)}
-                      className="zbtn zbtn-secondary"
-                    >
-                      Reassign
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Pending Leave Request Card */}
-            {!leaveApproved && (
-              <div
-                className="zelt-surface"
-                style={{
-                  padding: "20px 24px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 20,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 260 }}>
-                  <span style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", lineHeight: 1.3 }}>
-                    Leave request pending
-                  </span>
-                  <span style={{ fontSize: 13, color: "var(--ink-secondary)", lineHeight: 1.4 }}>
-                    B. O&apos;Connor &middot; Oct 28–30 &middot; Personal leave, coverage available
-                  </span>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 16, marginLeft: "auto" }}>
-                  <ZTag variant="warning">Pending</ZTag>
-                  {!isViewer && (
-                    <>
-                      <button
-                        onClick={() => setLeaveApproved(true)}
-                        className="zbtn zbtn-secondary"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => setLeaveApproved(true)}
-                        className="zbtn zbtn-text"
-                      >
-                        Deny
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* ── SECTION 2: Current Staffing ── */}
+      {/* ── SECTION 1: Current Staffing ── */}
       <section style={{ marginBottom: 48 }}>
         <div
           style={{
@@ -399,6 +599,7 @@ export function DashboardClient({
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             {canEditEmployees && (
               <button
+                type="button"
                 onClick={() => setIsRecordLeaveOpen(true)}
                 className="zbtn zbtn-secondary"
               >
@@ -406,6 +607,7 @@ export function DashboardClient({
               </button>
             )}
             <button
+              type="button"
               onClick={() => setIsExportOpen(true)}
               className="zbtn zbtn-secondary"
             >
@@ -414,6 +616,7 @@ export function DashboardClient({
             {/* Primary Action Button: Honey fill, ink text, EXACTLY ONE element per viewport */}
             {canAssignShifts && (
               <button
+                type="button"
                 onClick={() => setIsQuickAssignOpen(true)}
                 className="zbtn zbtn-primary"
               >
@@ -439,8 +642,8 @@ export function DashboardClient({
             <tbody>
               {(
                 [
-                  { label: "RN",   data: staffing.RN },
-                  { label: "MD",   data: staffing.MD },
+                  { label: "RN", data: staffing.RN },
+                  { label: "MD", data: staffing.MD },
                   { label: "Tech", data: staffing.Tech },
                 ]
               ).map(({ label, data }: { label: string; data: { onDuty: number; required: number } }) => {
@@ -496,7 +699,7 @@ export function DashboardClient({
         </div>
       </section>
 
-      {/* ── SECTION 3: On Duty Now ── */}
+      {/* ── SECTION 2: On Duty Now ── */}
       <section style={{ marginBottom: 48 }}>
         <div
           style={{
@@ -546,7 +749,7 @@ export function DashboardClient({
         </div>
       </section>
 
-      {/* ── SECTION 4: Next Shift ── */}
+      {/* ── SECTION 3: Next Shift ── */}
       <section style={{ marginBottom: 48 }}>
         <div
           style={{
@@ -612,7 +815,7 @@ export function DashboardClient({
         </div>
       </section>
 
-      {/* ── SECTION 5: Recent Activity ── */}
+      {/* ── SECTION 4: Recent Activity ── */}
       {auditLogs.length > 0 && (
         <section>
           <div
@@ -664,7 +867,7 @@ export function DashboardClient({
         </section>
       )}
 
-      {/* Modals */}
+      {/* Modals with custom larger layout and backdrop blur */}
       <ExportModal
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
@@ -683,6 +886,18 @@ export function DashboardClient({
         onClose={() => setIsRecordLeaveOpen(false)}
         employees={employees}
         leaveTypes={leaveTypes}
+      />
+      <EmployeeFormDialog
+        open={isAddEmployeeOpen}
+        onOpenChange={setIsAddEmployeeOpen}
+        isAdd={true}
+        formData={employeeFormData}
+        onFormDataChange={setEmployeeFormData}
+        roleOptions={roleOptions}
+        unitOptions={unitOptions}
+        exceptionFields={exceptionFields}
+        onExceptionFieldsChange={setExceptionFields}
+        onSave={handleSaveNewEmployee}
       />
     </div>
   );

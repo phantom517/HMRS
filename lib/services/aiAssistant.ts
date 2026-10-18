@@ -34,6 +34,7 @@ export async function runAssistantTurn(params: {
     user: AuthenticatedUser;
     history: AssistantMessage[];
     message: string;
+    model?: string;
 }): Promise<AssistantTurnResult> {
     const apiKey = process.env.GEMINI_API_KEY;
     const user = params.user;
@@ -97,7 +98,7 @@ export async function runAssistantTurn(params: {
 
     for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
         const response = await ai.models.generateContent({
-            model: MODEL,
+            model: params.model || MODEL,
             contents,
             config: {
                 systemInstruction,

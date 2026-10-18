@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { X, UserPlus, CheckCircle2, AlertTriangle } from "lucide-react";
+import { X, UserPlus, CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
 import { createShiftAssignmentAction } from "@/lib/actions/shifts";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 
 interface QuickAssignModalProps {
   isOpen: boolean;
@@ -12,6 +13,15 @@ interface QuickAssignModalProps {
   preselectedEmployeeId?: string;
   preselectedDate?: string;
 }
+
+const WARD_ZONE_OPTIONS = [
+  { value: "Red Zone (Trauma Resus 1-4)", label: "Red Zone (Trauma Resus 1-4)", badge: "Critical" },
+  { value: "Yellow Zone (Urgent Acute Assessment)", label: "Yellow Zone (Urgent Acute Assessment)", badge: "Acute" },
+  { value: "Green Zone (Fast-Track Ambulatory)", label: "Green Zone (Fast-Track Ambulatory)", badge: "Ambulatory" },
+  { value: "Zone 4: Pediatric ED Wing", label: "Zone 4: Pediatric ED Wing", badge: "Pediatric" },
+  { value: "Emergency Surgical Suite OR-1", label: "Emergency Surgical Suite OR-1", badge: "Surgical" },
+  { value: "ICU Overflow Pod A", label: "ICU Overflow Pod A", badge: "ICU" },
+];
 
 export function QuickAssignModal({
   isOpen,
@@ -59,28 +69,47 @@ export function QuickAssignModal({
     }
   }
 
+  const employeeOptions = employees.map((emp) => ({
+    value: emp.id,
+    label: emp.fullName,
+    description: `${emp.employeeId} · ${emp.designation}`,
+  }));
+
+  const shiftOptions = shiftTypes.map((st) => ({
+    value: st.id,
+    label: `[${st.shortCode}] ${st.name}`,
+    description: `${st.startTime} – ${st.endTime}`,
+    badge: st.shortCode,
+  }));
+
   return (
     <div
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 50,
-        background: "rgba(18, 23, 24, 0.4)",
+        zIndex: 100,
+        background: "rgba(18, 23, 24, 0.55)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 16,
+        padding: 24,
       }}
     >
       <div
         className="zelt-surface"
         style={{
           width: "100%",
-          maxWidth: 520,
-          padding: 24,
+          maxWidth: 680,
+          maxHeight: "92vh",
+          padding: 32,
           display: "flex",
           flexDirection: "column",
-          gap: 16,
+          gap: 24,
+          borderRadius: 16,
+          boxShadow: "none",
+          overflowY: "auto",
         }}
       >
         {/* Header */}
@@ -89,26 +118,41 @@ export function QuickAssignModal({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            paddingBottom: 16,
+            paddingBottom: 20,
             borderBottom: "1px solid var(--ink-border)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <UserPlus style={{ width: 18, height: 18, strokeWidth: 1.5, color: "var(--ink)" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: "var(--linen)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid var(--ink-border)",
+              }}
+            >
+              <UserPlus style={{ width: 22, height: 22, strokeWidth: 1.6, color: "var(--ink)" }} />
+            </div>
             <div>
-              <h3 style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", lineHeight: 1.2 }}>
+              <h3 style={{ fontSize: 20, fontWeight: 500, color: "var(--ink)", lineHeight: 1.2, margin: 0 }}>
                 Assign Roster Slot
               </h3>
-              <p style={{ fontSize: 13, color: "var(--ink-secondary)", marginTop: 2 }}>
+              <p style={{ fontSize: 14, color: "var(--ink-secondary)", marginTop: 4, margin: 0 }}>
                 DEPT-402 &middot; Emergency &amp; Critical Care
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close dialog"
             style={{
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -117,111 +161,94 @@ export function QuickAssignModal({
               border: "1px solid transparent",
               cursor: "pointer",
               color: "var(--ink)",
+              transition: "background-color 150ms ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--linen)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
             }}
           >
-            <X style={{ width: 16, height: 16, strokeWidth: 1.5 }} />
+            <X style={{ width: 18, height: 18, strokeWidth: 1.8 }} />
           </button>
         </div>
 
         {error && (
           <div
             style={{
-              padding: "10px 14px",
+              padding: "14px 18px",
               borderRadius: 12,
               background: "var(--critical-bg)",
               color: "var(--critical-text)",
-              fontSize: 13,
+              fontSize: 14,
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: 12,
             }}
           >
-            <AlertTriangle style={{ width: 16, height: 16, strokeWidth: 1.5, flexShrink: 0 }} />
-            <span>{error}</span>
+            <AlertTriangle style={{ width: 18, height: 18, strokeWidth: 1.8, flexShrink: 0 }} />
+            <span style={{ lineHeight: 1.4 }}>{error}</span>
           </div>
         )}
 
         {success && (
           <div
             style={{
-              padding: "10px 14px",
+              padding: "14px 18px",
               borderRadius: 12,
               background: "var(--linen)",
               color: "var(--ink)",
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: 500,
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: 12,
               border: "1px solid var(--ink-border)",
             }}
           >
-            <CheckCircle2 style={{ width: 16, height: 16, strokeWidth: 1.5, flexShrink: 0 }} />
+            <CheckCircle2 style={{ width: 18, height: 18, strokeWidth: 1.8, flexShrink: 0 }} />
             <span>{success}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {/* Employee Selection */}
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* Employee Selection with Custom Select */}
           <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--ink)", marginBottom: 6 }}>
-              Clinical Staff Member
-            </label>
-            <select
+            <CustomSelect
+              label="Clinical Staff Member"
               value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-              style={{
-                width: "100%",
-                height: 40,
-                padding: "0 12px",
-                borderRadius: 12,
-                background: "var(--linen)",
-                border: "1px solid var(--ink-border)",
-                fontSize: 14,
-                color: "var(--ink)",
-                fontFamily: "inherit",
-              }}
-            >
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.fullName} ({emp.employeeId} &middot; {emp.designation})
-                </option>
-              ))}
-            </select>
+              onChange={setEmployeeId}
+              options={employeeOptions}
+              placeholder="Search or select clinician…"
+              searchable={true}
+            />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            {/* Shift Template Selection */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            {/* Shift Template Selection with Custom Select */}
             <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--ink)", marginBottom: 6 }}>
-                Shift Template
-              </label>
-              <select
+              <CustomSelect
+                label="Shift Template"
                 value={shiftTypeId}
-                onChange={(e) => setShiftTypeId(e.target.value)}
-                style={{
-                  width: "100%",
-                  height: 40,
-                  padding: "0 12px",
-                  borderRadius: 12,
-                  background: "var(--linen)",
-                  border: "1px solid var(--ink-border)",
-                  fontSize: 14,
-                  color: "var(--ink)",
-                  fontFamily: "inherit",
-                }}
-              >
-                {shiftTypes.map((st) => (
-                  <option key={st.id} value={st.id}>
-                    [{st.shortCode}] {st.name} ({st.startTime}–{st.endTime})
-                  </option>
-                ))}
-              </select>
+                onChange={setShiftTypeId}
+                options={shiftOptions}
+                placeholder="Choose shift type…"
+                searchable={false}
+              />
             </div>
 
             {/* Date Selection */}
             <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--ink)", marginBottom: 6 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: "var(--ink)",
+                  marginBottom: 8,
+                }}
+              >
                 Schedule Date
               </label>
               <input
@@ -230,68 +257,62 @@ export function QuickAssignModal({
                 onChange={(e) => setDate(e.target.value)}
                 style={{
                   width: "100%",
-                  height: 40,
-                  padding: "0 12px",
+                  height: 48,
+                  padding: "0 16px",
                   borderRadius: 12,
                   background: "var(--linen)",
                   border: "1px solid var(--ink-border)",
-                  fontSize: 14,
+                  fontSize: 15,
                   color: "var(--ink)",
                   fontFamily: "inherit",
+                  outline: "none",
                 }}
               />
             </div>
           </div>
 
-          {/* Zone / Station */}
+          {/* Care Zone & Station with Custom Select */}
           <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--ink)", marginBottom: 6 }}>
-              Care Zone &amp; Station
-            </label>
-            <select
+            <CustomSelect
+              label="Care Zone & Station"
               value={wardZone}
-              onChange={(e) => setWardZone(e.target.value)}
-              style={{
-                width: "100%",
-                height: 40,
-                padding: "0 12px",
-                borderRadius: 12,
-                background: "var(--linen)",
-                border: "1px solid var(--ink-border)",
-                fontSize: 14,
-                color: "var(--ink)",
-                fontFamily: "inherit",
-              }}
-            >
-              <option value="Red Zone (Trauma Resus 1-4)">Red Zone (Trauma Resus 1-4)</option>
-              <option value="Yellow Zone (Urgent Acute Assessment)">Yellow Zone (Urgent Acute Assessment)</option>
-              <option value="Green Zone (Fast-Track Ambulatory)">Green Zone (Fast-Track Ambulatory)</option>
-              <option value="Zone 4: Pediatric ED Wing">Zone 4: Pediatric ED Wing</option>
-              <option value="Emergency Surgical Suite OR-1">Emergency Surgical Suite OR-1</option>
-              <option value="ICU Overflow Pod A">ICU Overflow Pod A</option>
-            </select>
+              onChange={setWardZone}
+              options={WARD_ZONE_OPTIONS}
+              placeholder="Select assigned station…"
+              searchable={false}
+            />
           </div>
 
           {/* Handover Note */}
           <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--ink)", marginBottom: 6 }}>
-              Handover Notes
+            <label
+              style={{
+                display: "block",
+                fontSize: 14,
+                fontWeight: 500,
+                color: "var(--ink)",
+                marginBottom: 8,
+              }}
+            >
+              Handover & Special Instructions
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Lead resuscitation bay until 13:00..."
-              rows={2}
+              placeholder="e.g. Lead resuscitation bay until 13:00, monitor triage queue..."
+              rows={3}
               style={{
                 width: "100%",
-                padding: "8px 12px",
+                padding: "12px 16px",
                 borderRadius: 12,
                 background: "var(--linen)",
                 border: "1px solid var(--ink-border)",
-                fontSize: 14,
+                fontSize: 15,
+                lineHeight: 1.5,
                 color: "var(--ink)",
                 fontFamily: "inherit",
                 resize: "none",
+                outline: "none",
               }}
             />
           </div>
@@ -299,18 +320,19 @@ export function QuickAssignModal({
           {/* Compliance Check Note */}
           <div
             style={{
-              padding: "10px 14px",
+              padding: "14px 18px",
               borderRadius: 12,
               background: "var(--linen)",
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              fontSize: 13,
+              gap: 12,
+              fontSize: 13.5,
               color: "var(--ink-secondary)",
+              border: "1px solid var(--ink-border)",
             }}
           >
-            <CheckCircle2 style={{ width: 16, height: 16, strokeWidth: 1.5, color: "var(--ink)", flexShrink: 0 }} />
-            <span>Pre-checks rest intervals and maximum continuous shift rules.</span>
+            <CheckCircle2 style={{ width: 18, height: 18, strokeWidth: 1.6, color: "var(--ink)", flexShrink: 0 }} />
+            <span>Pre-checks rest intervals (11h minimum) and weekly hours against hospital guardrails.</span>
           </div>
 
           {/* Actions */}
@@ -319,8 +341,8 @@ export function QuickAssignModal({
               display: "flex",
               alignItems: "center",
               justifyContent: "flex-end",
-              gap: 12,
-              paddingTop: 12,
+              gap: 14,
+              paddingTop: 16,
               borderTop: "1px solid var(--ink-border)",
             }}
           >
@@ -329,6 +351,7 @@ export function QuickAssignModal({
               onClick={onClose}
               disabled={isSubmitting}
               className="zbtn zbtn-secondary"
+              style={{ height: 48, padding: "0 20px" }}
             >
               Cancel
             </button>
@@ -336,8 +359,9 @@ export function QuickAssignModal({
               type="submit"
               disabled={isSubmitting}
               className="zbtn zbtn-primary"
+              style={{ height: 48, padding: "0 24px" }}
             >
-              {isSubmitting ? "Publishing..." : "Publish assignment"}
+              {isSubmitting ? "Publishing…" : "Publish assignment"}
             </button>
           </div>
         </form>

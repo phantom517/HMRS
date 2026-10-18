@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Printer, Download, FileText, Table, FileSpreadsheet } from "lucide-react";
+import { X, Printer, Download, FileText, Table, FileSpreadsheet, CheckCircle2 } from "lucide-react";
 import jsPDF from "jspdf";
 
 interface ExportModalProps {
@@ -39,7 +39,7 @@ export function ExportModal({
         doc.text("PATAN ACADEMY HEALTH SYSTEM", 14, 20);
         doc.setFontSize(12);
         doc.text("EMERGENCY & TRAUMA DEPARTMENT (DEPT-402) - HRMS AUDIT", 14, 28);
-        
+
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
         doc.text(`Report: ${reportTitle} [${reportCode}]`, 14, 38);
@@ -137,51 +137,70 @@ export function ExportModal({
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 50,
-        background: "rgba(18, 23, 24, 0.4)",
+        zIndex: 100,
+        background: "rgba(18, 23, 24, 0.55)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 16,
+        padding: 24,
       }}
     >
       <div
         className="zelt-surface"
         style={{
           width: "100%",
-          maxWidth: 600,
-          maxHeight: "90vh",
+          maxWidth: 720,
+          maxHeight: "92vh",
           display: "flex",
           flexDirection: "column",
+          borderRadius: 16,
+          boxShadow: "none",
           overflow: "hidden",
         }}
       >
         {/* Header */}
         <div
           style={{
-            padding: "20px 24px",
+            padding: "24px 32px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             borderBottom: "1px solid var(--ink-border)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Printer style={{ width: 18, height: 18, strokeWidth: 1.5, color: "var(--ink)" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: "var(--linen)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid var(--ink-border)",
+              }}
+            >
+              <Printer style={{ width: 22, height: 22, strokeWidth: 1.6, color: "var(--ink)" }} />
+            </div>
             <div>
-              <h4 style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", lineHeight: 1.2 }}>
-                Roster Export &amp; Audit
+              <h4 style={{ fontSize: 20, fontWeight: 500, color: "var(--ink)", lineHeight: 1.2, margin: 0 }}>
+                Roster Export &amp; Audit Report
               </h4>
-              <span style={{ fontSize: 13, color: "var(--ink-secondary)" }}>
-                DEPT-402 &middot; October 2024
+              <span style={{ fontSize: 14, color: "var(--ink-secondary)", marginTop: 4, display: "block" }}>
+                DEPT-402 &middot; Department Roster Summary
               </span>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close dialog"
             style={{
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -190,20 +209,27 @@ export function ExportModal({
               border: "1px solid transparent",
               cursor: "pointer",
               color: "var(--ink)",
+              transition: "background-color 150ms ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--linen)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
             }}
           >
-            <X style={{ width: 16, height: 16, strokeWidth: 1.5 }} />
+            <X style={{ width: 18, height: 18, strokeWidth: 1.8 }} />
           </button>
         </div>
 
         {/* Body */}
-        <div style={{ padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ padding: 32, overflowY: "auto", display: "flex", flexDirection: "column", gap: 24 }}>
           {/* Summary Box */}
           <div
             style={{
-              padding: "14px 18px",
+              padding: "18px 22px",
               background: "var(--linen)",
-              borderRadius: 12,
+              borderRadius: 14,
               border: "1px solid var(--ink-border)",
               display: "flex",
               alignItems: "center",
@@ -211,9 +237,9 @@ export function ExportModal({
             }}
           >
             <div>
-              <div style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>{reportTitle}</div>
-              <div style={{ fontSize: 13, color: "var(--ink-secondary)", marginTop: 2 }}>
-                Hash: 9f8a2-patan-dept402-202410
+              <div style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)" }}>{reportTitle}</div>
+              <div style={{ fontSize: 13.5, color: "var(--ink-secondary)", marginTop: 4 }}>
+                Hash: 9f8a2-patan-dept402-202410-cycleA
               </div>
             </div>
             <span
@@ -222,62 +248,62 @@ export function ExportModal({
                 fontWeight: 500,
                 background: "var(--paper)",
                 border: "1px solid var(--ink-border)",
-                padding: "2px 10px",
+                padding: "4px 14px",
                 borderRadius: 12,
                 color: "var(--ink)",
               }}
             >
-              Validated
+              Validated Hash
             </span>
           </div>
 
           {/* Metadata Grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
             <div
               style={{
-                padding: "10px 12px",
+                padding: "14px 16px",
                 background: "var(--linen)",
                 borderRadius: 12,
                 border: "1px solid var(--ink-border)",
               }}
             >
-              <span style={{ fontSize: 13, color: "var(--ink-tertiary)", display: "block" }}>Clinicians</span>
-              <span style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>68 Active</span>
+              <span style={{ fontSize: 13, color: "var(--ink-tertiary)", display: "block", marginBottom: 4 }}>Clinicians</span>
+              <span style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)" }}>68 Active</span>
             </div>
             <div
               style={{
-                padding: "10px 12px",
+                padding: "14px 16px",
                 background: "var(--linen)",
                 borderRadius: 12,
                 border: "1px solid var(--ink-border)",
               }}
             >
-              <span style={{ fontSize: 13, color: "var(--ink-tertiary)", display: "block" }}>Window</span>
-              <span style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>01–31 Oct</span>
+              <span style={{ fontSize: 13, color: "var(--ink-tertiary)", display: "block", marginBottom: 4 }}>Window</span>
+              <span style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)" }}>01–31 Oct</span>
             </div>
             <div
               style={{
-                padding: "10px 12px",
+                padding: "14px 16px",
                 background: "var(--linen)",
                 borderRadius: 12,
                 border: "1px solid var(--ink-border)",
               }}
             >
-              <span style={{ fontSize: 13, color: "var(--ink-tertiary)", display: "block" }}>Hours</span>
-              <span style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
+              <span style={{ fontSize: 13, color: "var(--ink-tertiary)", display: "block", marginBottom: 4 }}>Hours</span>
+              <span style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
                 2,145.0
               </span>
             </div>
             <div
               style={{
-                padding: "10px 12px",
+                padding: "14px 16px",
                 background: "var(--linen)",
                 borderRadius: 12,
                 border: "1px solid var(--ink-border)",
               }}
             >
-              <span style={{ fontSize: 13, color: "var(--ink-tertiary)", display: "block" }}>Deficits</span>
-              <span style={{ fontSize: 14, fontWeight: 500, color: "var(--critical-text)", fontVariantNumeric: "tabular-nums" }}>
+              <span style={{ fontSize: 13, color: "var(--ink-tertiary)", display: "block", marginBottom: 4 }}>Deficits</span>
+              <span style={{ fontSize: 16, fontWeight: 500, color: "var(--critical-text)", fontVariantNumeric: "tabular-nums" }}>
                 2 Events
               </span>
             </div>
@@ -285,10 +311,10 @@ export function ExportModal({
 
           {/* Target Format Options */}
           <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--ink)", marginBottom: 8 }}>
+            <label style={{ display: "block", fontSize: 14, fontWeight: 500, color: "var(--ink)", marginBottom: 10 }}>
               Export Format
             </label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
               <button
                 type="button"
                 onClick={() => setFormat("pdf")}
@@ -296,18 +322,19 @@ export function ExportModal({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 8,
-                  height: 40,
+                  gap: 10,
+                  height: 48,
                   borderRadius: 12,
                   background: format === "pdf" ? "var(--paper)" : "var(--linen)",
-                  border: format === "pdf" ? "1px solid var(--ink)" : "1px solid var(--ink-border)",
-                  fontSize: 14,
+                  border: format === "pdf" ? "1.5px solid var(--ink)" : "1px solid var(--ink-border)",
+                  fontSize: 15,
                   fontWeight: format === "pdf" ? 500 : 400,
                   color: "var(--ink)",
                   cursor: "pointer",
+                  transition: "all 150ms ease",
                 }}
               >
-                <FileText style={{ width: 16, height: 16, strokeWidth: 1.5 }} />
+                <FileText style={{ width: 18, height: 18, strokeWidth: 1.6 }} />
                 <span>PDF Document</span>
               </button>
 
@@ -318,18 +345,19 @@ export function ExportModal({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 8,
-                  height: 40,
+                  gap: 10,
+                  height: 48,
                   borderRadius: 12,
                   background: format === "xlsx" ? "var(--paper)" : "var(--linen)",
-                  border: format === "xlsx" ? "1px solid var(--ink)" : "1px solid var(--ink-border)",
-                  fontSize: 14,
+                  border: format === "xlsx" ? "1.5px solid var(--ink)" : "1px solid var(--ink-border)",
+                  fontSize: 15,
                   fontWeight: format === "xlsx" ? 500 : 400,
                   color: "var(--ink)",
                   cursor: "pointer",
+                  transition: "all 150ms ease",
                 }}
               >
-                <FileSpreadsheet style={{ width: 16, height: 16, strokeWidth: 1.5 }} />
+                <FileSpreadsheet style={{ width: 18, height: 18, strokeWidth: 1.6 }} />
                 <span>Excel (.xlsx)</span>
               </button>
 
@@ -340,18 +368,19 @@ export function ExportModal({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 8,
-                  height: 40,
+                  gap: 10,
+                  height: 48,
                   borderRadius: 12,
                   background: format === "csv" ? "var(--paper)" : "var(--linen)",
-                  border: format === "csv" ? "1px solid var(--ink)" : "1px solid var(--ink-border)",
-                  fontSize: 14,
+                  border: format === "csv" ? "1.5px solid var(--ink)" : "1px solid var(--ink-border)",
+                  fontSize: 15,
                   fontWeight: format === "csv" ? 500 : 400,
                   color: "var(--ink)",
                   cursor: "pointer",
+                  transition: "all 150ms ease",
                 }}
               >
-                <Table style={{ width: 16, height: 16, strokeWidth: 1.5 }} />
+                <Table style={{ width: 18, height: 18, strokeWidth: 1.6 }} />
                 <span>Data (.csv)</span>
               </button>
             </div>
@@ -361,7 +390,7 @@ export function ExportModal({
         {/* Footer */}
         <div
           style={{
-            padding: "16px 24px",
+            padding: "20px 32px",
             background: "var(--linen)",
             borderTop: "1px solid var(--ink-border)",
             display: "flex",
@@ -369,21 +398,28 @@ export function ExportModal({
             justifyContent: "space-between",
           }}
         >
-          <span style={{ fontSize: 13, color: "var(--ink-secondary)" }}>
-            {downloadSuccess ? "Document exported successfully." : "Ready for clinical compliance repository."}
-          </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={onClose} className="zbtn zbtn-secondary">
-              Cancel
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, color: "var(--ink-secondary)" }}>
+            {downloadSuccess && <CheckCircle2 style={{ width: 16, height: 16, color: "var(--ink)" }} />}
+            <span>{downloadSuccess ? "Document exported successfully." : "Ready for clinical compliance repository."}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button
+              type="button"
+              onClick={onClose}
+              className="zbtn zbtn-secondary"
+              style={{ height: 44, padding: "0 18px" }}
+            >
+              Close
             </button>
             <button
+              type="button"
               onClick={handleDownload}
               disabled={isExporting}
-              className="zbtn zbtn-secondary"
-              style={{ background: "var(--paper)" }}
+              className="zbtn zbtn-primary"
+              style={{ height: 44, padding: "0 22px" }}
             >
-              <Download style={{ width: 15, height: 15, strokeWidth: 1.5 }} />
-              <span>{isExporting ? "Generating..." : "Download file"}</span>
+              <Download style={{ width: 16, height: 16, strokeWidth: 1.7 }} />
+              <span>{isExporting ? "Generating…" : "Download file"}</span>
             </button>
           </div>
         </div>

@@ -64,22 +64,26 @@ export function ConflictCheckerModal({ isOpen, onClose, onResolved }: ConflictCh
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 50,
-        background: "rgba(18, 23, 24, 0.4)",
+        zIndex: 100,
+        background: "rgba(18, 23, 24, 0.55)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 16,
+        padding: 24,
       }}
     >
       <div
         className="zelt-surface"
         style={{
           width: "100%",
-          maxWidth: 620,
-          maxHeight: "90vh",
+          maxWidth: 680,
+          maxHeight: "92vh",
           display: "flex",
           flexDirection: "column",
+          borderRadius: 16,
+          boxShadow: "none",
           overflow: "hidden",
         }}
       >

@@ -17,6 +17,8 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
+  Check,
+  ChevronDown,
   ChevronRight,
   Loader2,
   Sparkles,
@@ -25,6 +27,12 @@ import {
 } from "lucide-react";
 import { AuthenticatedUser } from "@/lib/auth/session";
 import { sendAssistantMessageAction } from "@/lib/actions/ai";
+
+export const ASSISTANT_MODELS = [
+  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", badge: "Fast" },
+  { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", badge: "Reasoning" },
+  { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash", badge: "Standard" },
+];
 import {
   getAssistantSuggestionsAction,
   type AssistantSuggestion,
@@ -72,6 +80,22 @@ export function AssistantChat({ currentUser }: { currentUser: AuthenticatedUser 
   const lastRequestId = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash");
+  const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (modelMenuRef.current && !modelMenuRef.current.contains(event.target as Node)) {
+        setIsModelMenuOpen(false);
+      }
+    }
+    if (isModelMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isModelMenuOpen]);
 
   const [entries, setEntries] = useState<ChatEntry[]>(() => {
     try {
@@ -148,7 +172,11 @@ export function AssistantChat({ currentUser }: { currentUser: AuthenticatedUser 
       setNearBottom(true);
 
       try {
-        const res = await sendAssistantMessageAction({ history, message: text });
+        const res = await sendAssistantMessageAction({
+          history,
+          message: text,
+          model: selectedModel,
+        });
         if (lastRequestId.current !== requestId) return; // stopped by the user
         setEntries((prev) => [
           ...prev,
@@ -168,7 +196,7 @@ export function AssistantChat({ currentUser }: { currentUser: AuthenticatedUser 
         if (lastRequestId.current === requestId) setPending(null);
       }
     },
-    [entries, pending, router]
+    [entries, pending, router, selectedModel]
   );
 
   const stop = useCallback(() => {
@@ -211,58 +239,159 @@ export function AssistantChat({ currentUser }: { currentUser: AuthenticatedUser 
   const pendingProposalIndex = entries.findIndex((e) => e.proposal && !e.resolved);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      {/* ── Page header: title + subtitle left, Clear right, on the title baseline ── */}
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, height: "100%", gap: 10 }}>
+      {/* ── Compact Toolbar: Clean Model Selector + Clear Button (No bloated header) ── */}
       <div
         style={{
           display: "flex",
-          alignItems: "baseline",
+          alignItems: "center",
           justifyContent: "space-between",
-          gap: 24,
+          gap: 12,
+          padding: "2px 4px",
+          flexShrink: 0,
         }}
       >
-        <div style={{ minWidth: 0 }}>
-          <h1
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span
             style={{
-              fontSize: 32,
-              fontWeight: 500,
-              letterSpacing: "-0.38px",
-              lineHeight: 1.2,
-              margin: 0,
-              color: "var(--ink)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              background: "var(--paper)",
+              border: "1px solid var(--ink-border)",
             }}
           >
-            Assistant
-          </h1>
-          <p
-            style={{
-              fontSize: 15,
-              color: "var(--ink-secondary)",
-              lineHeight: 1.5,
-              margin: "8px 0 0 0",
-            }}
-          >
-            Ask about the roster, leave, or staff. Any change is shown to you first and
-            saved only after you confirm.
-          </p>
+            <Sparkles style={{ width: 16, height: 16, color: "var(--ink)", strokeWidth: 1.8 }} />
+          </span>
+          <span style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)" }}>
+            Clinical Assistant
+          </span>
+          <span className="ztag ztag-neutral" style={{ fontSize: 12, padding: "2px 8px" }}>
+            DEPT-402
+          </span>
         </div>
-        <button
-          type="button"
-          className="zbtn zbtn-secondary"
-          onClick={() => {
-            setEntries([]);
-            setError(null);
-          }}
-          disabled={entries.length === 0}
-          style={{ flexShrink: 0, opacity: entries.length === 0 ? 0.45 : 1 }}
-        >
-          <Trash2 style={{ width: 15, height: 15, strokeWidth: 1.6 }} />
-          <span>Clear conversation</span>
-        </button>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* Clean Model Selector */}
+          <div ref={modelMenuRef} style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={() => setIsModelMenuOpen(!isModelMenuOpen)}
+              className="zbtn zbtn-secondary"
+              style={{
+                height: 34,
+                padding: "0 12px",
+                fontSize: 13,
+                borderRadius: 10,
+                background: "var(--paper)",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+              aria-label="Select AI model"
+            >
+              <span style={{ fontWeight: 500 }}>
+                {ASSISTANT_MODELS.find((m) => m.id === selectedModel)?.name || "Gemini 2.5 Flash"}
+              </span>
+              <span className="ztag ztag-neutral" style={{ fontSize: 11, padding: "1px 6px" }}>
+                {ASSISTANT_MODELS.find((m) => m.id === selectedModel)?.badge || "Fast"}
+              </span>
+              <ChevronDown
+                style={{
+                  width: 14,
+                  height: 14,
+                  transform: isModelMenuOpen ? "rotate(180deg)" : "none",
+                  transition: "transform 150ms ease",
+                }}
+              />
+            </button>
+
+            {isModelMenuOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "calc(100% + 6px)",
+                  width: 220,
+                  background: "var(--paper)",
+                  backdropFilter: "blur(16px)",
+                  WebkitBackdropFilter: "blur(16px)",
+                  border: "1px solid var(--ink-border-strong)",
+                  borderRadius: 12,
+                  padding: 4,
+                  zIndex: 50,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                }}
+              >
+                {ASSISTANT_MODELS.map((m) => {
+                  const isSelected = m.id === selectedModel;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedModel(m.id);
+                        setIsModelMenuOpen(false);
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        background: isSelected ? "var(--linen)" : "transparent",
+                        border: "none",
+                        color: "var(--ink)",
+                        fontSize: 13,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        textAlign: "left",
+                      }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                        <span style={{ fontWeight: isSelected ? 500 : 400 }}>{m.name}</span>
+                        <span style={{ fontSize: 11, color: "var(--ink-secondary)" }}>{m.badge}</span>
+                      </div>
+                      {isSelected && <Check style={{ width: 14, height: 14, color: "var(--ink)" }} />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Clear conversation button */}
+          <button
+            type="button"
+            className="zbtn zbtn-secondary"
+            onClick={() => {
+              setEntries([]);
+              setError(null);
+            }}
+            disabled={entries.length === 0}
+            style={{
+              height: 34,
+              padding: "0 12px",
+              fontSize: 13,
+              borderRadius: 10,
+              background: "var(--paper)",
+              opacity: entries.length === 0 ? 0.45 : 1,
+            }}
+            title="Clear conversation"
+          >
+            <Trash2 style={{ width: 13, height: 13, strokeWidth: 1.6 }} />
+            <span>Clear</span>
+          </button>
+        </div>
       </div>
 
       {/* ── Conversation card ── */}
-      <div className="zchat-card">
+      <div className="zchat-card" style={{ flex: 1, minHeight: 0, height: "100%" }}>
         <div className="zchat-fade" style={{ position: "relative", flex: 1, minHeight: 0, display: "flex" }}>
           <div
             ref={scrollRef}

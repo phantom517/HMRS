@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, CalendarOff, CheckCircle2, ShieldCheck } from "lucide-react";
 import { createLeaveRecordAction, createOffDayAction } from "@/lib/actions/leave";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 
 interface RecordLeaveModalProps {
   isOpen: boolean;
@@ -68,28 +69,57 @@ export function RecordLeaveModal({
     }
   }
 
+  const employeeOptions = employees.map((emp) => ({
+    value: emp.id,
+    label: emp.fullName,
+    description: `${emp.employeeId} · ${emp.designation}`,
+  }));
+
+  const leaveTypeOptions = leaveTypes.map((lt) => ({
+    value: lt.id,
+    label: `[${lt.code}] ${lt.name}`,
+    badge: lt.code,
+  }));
+
+  const replacementOptions = [
+    { value: "", label: "No replacement assigned", description: "Direct shift unassignment without cover" },
+    ...employees
+      .filter((e) => e.id !== employeeId)
+      .map((emp) => ({
+        value: emp.id,
+        label: emp.fullName,
+        description: `${emp.employeeId} · ${emp.designation}`,
+      })),
+  ];
+
   return (
     <div
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 50,
-        background: "rgba(18, 23, 24, 0.4)",
+        zIndex: 100,
+        background: "rgba(18, 23, 24, 0.55)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 16,
+        padding: 24,
       }}
     >
       <div
         className="zelt-surface"
         style={{
           width: "100%",
-          maxWidth: 520,
-          padding: 24,
+          maxWidth: 680,
+          maxHeight: "92vh",
+          padding: 32,
           display: "flex",
           flexDirection: "column",
-          gap: 16,
+          gap: 24,
+          borderRadius: 16,
+          boxShadow: "none",
+          overflowY: "auto",
         }}
       >
         {/* Header */}
@@ -98,26 +128,41 @@ export function RecordLeaveModal({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            paddingBottom: 16,
+            paddingBottom: 20,
             borderBottom: "1px solid var(--ink-border)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <CalendarOff style={{ width: 18, height: 18, strokeWidth: 1.5, color: "var(--ink)" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: "var(--linen)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid var(--ink-border)",
+              }}
+            >
+              <CalendarOff style={{ width: 22, height: 22, strokeWidth: 1.6, color: "var(--ink)" }} />
+            </div>
             <div>
-              <h3 style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", lineHeight: 1.2 }}>
+              <h3 style={{ fontSize: 20, fontWeight: 500, color: "var(--ink)", lineHeight: 1.2, margin: 0 }}>
                 Record Leave &amp; Off-Days
               </h3>
-              <p style={{ fontSize: 13, color: "var(--ink-secondary)", marginTop: 2 }}>
-                DEPT-402 &middot; Schedule Entry
+              <p style={{ fontSize: 14, color: "var(--ink-secondary)", marginTop: 4, margin: 0 }}>
+                DEPT-402 &middot; Staff Leave Management
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close dialog"
             style={{
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -126,30 +171,38 @@ export function RecordLeaveModal({
               border: "1px solid transparent",
               cursor: "pointer",
               color: "var(--ink)",
+              transition: "background-color 150ms ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--linen)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
             }}
           >
-            <X style={{ width: 16, height: 16, strokeWidth: 1.5 }} />
+            <X style={{ width: 18, height: 18, strokeWidth: 1.8 }} />
           </button>
         </div>
 
-        {/* Mode Toggle */}
+        {/* Mode Toggle with large comfortable tabs */}
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
-            padding: 3,
+            padding: 4,
             background: "var(--linen)",
-            borderRadius: 12,
+            borderRadius: 14,
             border: "1px solid var(--ink-border)",
+            gap: 4,
           }}
         >
           <button
             type="button"
             onClick={() => setEntryMode("LEAVE")}
             style={{
-              padding: "8px 12px",
+              padding: "10px 16px",
               borderRadius: 10,
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: entryMode === "LEAVE" ? 500 : 400,
               background: entryMode === "LEAVE" ? "var(--paper)" : "transparent",
               color: "var(--ink)",
@@ -158,15 +211,15 @@ export function RecordLeaveModal({
               transition: "all 150ms ease",
             }}
           >
-            Accrued Leave
+            Accrued Leave Request
           </button>
           <button
             type="button"
             onClick={() => setEntryMode("OFFDAY")}
             style={{
-              padding: "8px 12px",
+              padding: "10px 16px",
               borderRadius: 10,
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: entryMode === "OFFDAY" ? 500 : 400,
               background: entryMode === "OFFDAY" ? "var(--paper)" : "transparent",
               color: "var(--ink)",
@@ -175,93 +228,69 @@ export function RecordLeaveModal({
               transition: "all 150ms ease",
             }}
           >
-            Regular Off-Day
+            Scheduled Off-Day
           </button>
         </div>
 
         {message && (
           <div
             style={{
-              padding: "10px 14px",
+              padding: "14px 18px",
               borderRadius: 12,
               background: "var(--linen)",
               color: "var(--ink)",
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: 500,
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: 12,
               border: "1px solid var(--ink-border)",
             }}
           >
-            <CheckCircle2 style={{ width: 16, height: 16, strokeWidth: 1.5, flexShrink: 0 }} />
+            <CheckCircle2 style={{ width: 18, height: 18, strokeWidth: 1.8, flexShrink: 0 }} />
             <span>{message}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Employee Selection */}
           <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--ink)", marginBottom: 6 }}>
-              Hospital Employee
-            </label>
-            <select
+            <CustomSelect
+              label="Hospital Employee"
               value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-              style={{
-                width: "100%",
-                height: 40,
-                padding: "0 12px",
-                borderRadius: 12,
-                background: "var(--linen)",
-                border: "1px solid var(--ink-border)",
-                fontSize: 14,
-                color: "var(--ink)",
-                fontFamily: "inherit",
-              }}
-            >
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.fullName} ({emp.employeeId} &middot; {emp.designation})
-                </option>
-              ))}
-            </select>
+              onChange={setEmployeeId}
+              options={employeeOptions}
+              placeholder="Search or select clinician…"
+              searchable={true}
+            />
           </div>
 
           {/* Leave Classification */}
           {entryMode === "LEAVE" && (
             <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--ink)", marginBottom: 6 }}>
-                Leave Classification
-              </label>
-              <select
+              <CustomSelect
+                label="Leave Classification"
                 value={leaveTypeId}
-                onChange={(e) => setLeaveTypeId(e.target.value)}
-                style={{
-                  width: "100%",
-                  height: 40,
-                  padding: "0 12px",
-                  borderRadius: 12,
-                  background: "var(--linen)",
-                  border: "1px solid var(--ink-border)",
-                  fontSize: 14,
-                  color: "var(--ink)",
-                  fontFamily: "inherit",
-                }}
-              >
-                {leaveTypes.map((lt) => (
-                  <option key={lt.id} value={lt.id}>
-                    [{lt.code}] {lt.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setLeaveTypeId}
+                options={leaveTypeOptions}
+                placeholder="Choose leave type…"
+                searchable={false}
+              />
             </div>
           )}
 
           {/* Date Range */}
-          <div style={{ display: "grid", gridTemplateColumns: entryMode === "LEAVE" ? "1fr 1fr" : "1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: entryMode === "LEAVE" ? "1fr 1fr" : "1fr", gap: 16 }}>
             <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--ink)", marginBottom: 6 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: "var(--ink)",
+                  marginBottom: 8,
+                }}
+              >
                 {entryMode === "OFFDAY" ? "Rest Date" : "Start Date"}
               </label>
               <input
@@ -270,20 +299,29 @@ export function RecordLeaveModal({
                 onChange={(e) => setStartDate(e.target.value)}
                 style={{
                   width: "100%",
-                  height: 40,
-                  padding: "0 12px",
+                  height: 48,
+                  padding: "0 16px",
                   borderRadius: 12,
                   background: "var(--linen)",
                   border: "1px solid var(--ink-border)",
-                  fontSize: 14,
+                  fontSize: 15,
                   color: "var(--ink)",
                   fontFamily: "inherit",
+                  outline: "none",
                 }}
               />
             </div>
             {entryMode === "LEAVE" && (
               <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--ink)", marginBottom: 6 }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: "var(--ink)",
+                    marginBottom: 8,
+                  }}
+                >
                   End Date
                 </label>
                 <input
@@ -292,14 +330,15 @@ export function RecordLeaveModal({
                   onChange={(e) => setEndDate(e.target.value)}
                   style={{
                     width: "100%",
-                    height: 40,
-                    padding: "0 12px",
+                    height: 48,
+                    padding: "0 16px",
                     borderRadius: 12,
                     background: "var(--linen)",
                     border: "1px solid var(--ink-border)",
-                    fontSize: 14,
+                    fontSize: 15,
                     color: "var(--ink)",
                     fontFamily: "inherit",
+                    outline: "none",
                   }}
                 />
               </div>
@@ -309,56 +348,46 @@ export function RecordLeaveModal({
           {/* Nominated Substitute Peer */}
           {entryMode === "LEAVE" && (
             <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--ink)", marginBottom: 6 }}>
-                Nominated Replacement Clinician
-              </label>
-              <select
+              <CustomSelect
+                label="Nominated Replacement Clinician"
                 value={replacementEmployeeId}
-                onChange={(e) => setReplacementEmployeeId(e.target.value)}
-                style={{
-                  width: "100%",
-                  height: 40,
-                  padding: "0 12px",
-                  borderRadius: 12,
-                  background: "var(--linen)",
-                  border: "1px solid var(--ink-border)",
-                  fontSize: 14,
-                  color: "var(--ink)",
-                  fontFamily: "inherit",
-                }}
-              >
-                <option value="">No replacement assigned</option>
-                {employees
-                  .filter((e) => e.id !== employeeId)
-                  .map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.fullName} ({emp.designation})
-                    </option>
-                  ))}
-              </select>
+                onChange={setReplacementEmployeeId}
+                options={replacementOptions}
+                placeholder="Select substitute clinician…"
+                searchable={true}
+              />
             </div>
           )}
 
           {/* Reason */}
           <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--ink)", marginBottom: 6 }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: 14,
+                fontWeight: 500,
+                color: "var(--ink)",
+                marginBottom: 8,
+              }}
+            >
               Reason / Medical Certificate Notes
             </label>
             <input
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder={entryMode === "OFFDAY" ? "e.g. Rotational 48h Safe Cycle rest" : "e.g. Form 14-B signed..."}
+              placeholder={entryMode === "OFFDAY" ? "e.g. Rotational 48h Safe Cycle rest" : "e.g. Form 14-B signed by Clinical Director"}
               style={{
                 width: "100%",
-                height: 40,
-                padding: "0 12px",
+                height: 48,
+                padding: "0 16px",
                 borderRadius: 12,
                 background: "var(--linen)",
                 border: "1px solid var(--ink-border)",
-                fontSize: 14,
+                fontSize: 15,
                 color: "var(--ink)",
                 fontFamily: "inherit",
+                outline: "none",
               }}
             />
           </div>
@@ -366,18 +395,19 @@ export function RecordLeaveModal({
           {/* Safety Check Notice */}
           <div
             style={{
-              padding: "10px 14px",
+              padding: "14px 18px",
               borderRadius: 12,
               background: "var(--linen)",
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              fontSize: 13,
+              gap: 12,
+              fontSize: 13.5,
               color: "var(--ink-secondary)",
+              border: "1px solid var(--ink-border)",
             }}
           >
-            <ShieldCheck style={{ width: 16, height: 16, strokeWidth: 1.5, color: "var(--ink)", flexShrink: 0 }} />
-            <span>Pre-checks patient-to-bed ratios and substitute qualifications.</span>
+            <ShieldCheck style={{ width: 18, height: 18, strokeWidth: 1.6, color: "var(--ink)", flexShrink: 0 }} />
+            <span>Pre-checks unit patient-to-bed ratios and verifies clinician qualification overlap.</span>
           </div>
 
           {/* Actions */}
@@ -386,8 +416,8 @@ export function RecordLeaveModal({
               display: "flex",
               alignItems: "center",
               justifyContent: "flex-end",
-              gap: 12,
-              paddingTop: 12,
+              gap: 14,
+              paddingTop: 16,
               borderTop: "1px solid var(--ink-border)",
             }}
           >
@@ -396,16 +426,17 @@ export function RecordLeaveModal({
               onClick={onClose}
               disabled={isSubmitting}
               className="zbtn zbtn-secondary"
+              style={{ height: 48, padding: "0 20px" }}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="zbtn zbtn-secondary"
-              style={{ background: "var(--paper)" }}
+              className="zbtn zbtn-primary"
+              style={{ height: 48, padding: "0 24px" }}
             >
-              {isSubmitting ? "Saving..." : entryMode === "OFFDAY" ? "Record rest day" : "Record leave"}
+              {isSubmitting ? "Saving…" : entryMode === "OFFDAY" ? "Record rest day" : "Record leave"}
             </button>
           </div>
         </form>

@@ -15,6 +15,7 @@ import { runAssistantTurn, type AssistantMessage } from "@/lib/services/aiAssist
 export async function sendAssistantMessageAction(params: {
   history: Array<{ role: "user" | "model"; text: string }>;
   message: string;
+  model?: string;
 }) {
   const user = await getCurrentUser();
 
@@ -24,7 +25,12 @@ export async function sendAssistantMessageAction(params: {
     .map((m) => ({ role: m.role, text: m.text.slice(0, 4000) }));
 
   try {
-    const result = await runAssistantTurn({ user, history, message: params.message.slice(0, 4000) });
+    const result = await runAssistantTurn({
+      user,
+      history,
+      message: params.message.slice(0, 4000),
+      model: params.model,
+    });
     return result;
   } catch (err: any) {
     return {

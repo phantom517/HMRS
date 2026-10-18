@@ -25,7 +25,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     db.getEmployees({ status: "active", pageSize: 100 }),
     db.getShiftTypes(),
-    db.getShiftAssignments({ startDate, endDate }),
+    db.getShiftAssignments(),
     db.getLeaveRecords(),
     db.getOffDays(),
     db.getDepartmentSettings(),
